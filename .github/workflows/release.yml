@@ -5,10 +5,15 @@ on:
     branches: [main]
     paths:
       - VERSION
+      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: vidcore-release
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -51,11 +56,11 @@ jobs:
           Copy-Item 'VidCoreNativePlayer/build/Release/VidCoreNativePlayer.exe' $nativeStage
           Copy-Item 'VidCoreNativePlayer/build/Release/assets' (Join-Path $nativeStage 'assets') -Recurse
           Copy-Item 'VidCoreNativePlayer/README.md' $nativeStage
-          @'
-          @echo off
-          cd /d "%~dp0"
-          start "" VidCoreNativePlayer.exe
-          '@ | Set-Content (Join-Path $nativeStage 'run.bat') -Encoding ascii
+          @(
+            '@echo off',
+            'cd /d "%~dp0"',
+            'start "" VidCoreNativePlayer.exe'
+          ) | Set-Content (Join-Path $nativeStage 'run.bat') -Encoding ascii
 
           $webStage = Join-Path $dist 'VidCoreWebPlayer'
           Copy-Item 'VidCoreWebPlayer' $webStage -Recurse
@@ -114,3 +119,27 @@ jobs:
             dist/VidCoreNativePlayer-v$env:VERSION-windows-x64.zip `
             dist/VidCoreWebPlayer-v$env:VERSION.zip `
             dist/SHA256SUMS.txt
+
+      - name: Record release workflow result
+        if: always()
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          $status = '${{ job.status }}'
+          @"
+          # Release Status
+
+          - Version: v$version
+          - Status: $status
+          - Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - Source commit: `${{ github.sha }}`
+          "@ | Set-Content RELEASE_STATUS.md -Encoding utf8
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add RELEASE_STATUS.md
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Record v$version release status"
+            git push
+          }
