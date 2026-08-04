@@ -45,7 +45,6 @@ jobs:
             Remove-Item $script -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts/apply-v0.2.5.part*' -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts/apply-v0.2.5.py.gz.b64' -Force -ErrorAction SilentlyContinue
-            Remove-Item '.github/scripts' -Force -ErrorAction SilentlyContinue
 
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
