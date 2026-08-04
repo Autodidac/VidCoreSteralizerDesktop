@@ -662,15 +662,13 @@ private:
         std::wstring value
     ) {
         while (!value.empty() &&
-               (value.front() == L' ' || value.front() == L'' ||
-                value.front() == L'
-' || value.front() == L'	')) {
+               (value.front() == L' ' || value.front() == L'\r' ||
+                value.front() == L'\n' || value.front() == L'\t')) {
             value.erase(value.begin());
         }
         while (!value.empty() &&
-               (value.back() == L' ' || value.back() == L'' ||
-                value.back() == L'
-' || value.back() == L'	')) {
+               (value.back() == L' ' || value.back() == L'\r' ||
+                value.back() == L'\n' || value.back() == L'\t')) {
             value.pop_back();
         }
         return value.size() >= 2 &&
