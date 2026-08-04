@@ -1,0 +1,159 @@
+            module_path.data(),
+            static_cast<DWORD>(module_path.size())
+        );
+        if (length > 0 && length < module_path.size()) {
+            module_path.resize(length);
+            return std::filesystem::path{module_path}.parent_path();
+        }
+        return std::filesystem::current_path();
+    }
+
+    static constexpr std::wstring_view popup_guard_script''',
+    "executable directory helper",
+)
+webview = replace_once(
+    webview,
+    '''            host_matches(host, L"wikipedia.org") ||
+            host_matches(host, L"wikidata.org");''',
+    '''            host_matches(host, L"wikipedia.org") ||
+            host_matches(host, L"wikidata.org") ||
+            host_matches(host, L"fastflix.to") ||
+            host_matches(host, L"seeflix.to") ||
+            host_matches(host, L"123moviesfree.net");''',
+    "trusted external catalogs",
+)
+write(webview_path, webview)
+
+config_path = NATIVE / "src" / "vidcore.config.ixx"
+config = read(config_path).replace('version = L"0.2.1"', 'version = L"0.2.5"')
+write(config_path, config)
+
+cmake_path = NATIVE / "CMakeLists.txt"
+cmake = read(cmake_path).replace("VERSION 0.2.4", "VERSION 0.2.5", 1)
+write(cmake_path, cmake)
+
+# ---------------------------------------------------------------------------
+# Tests and documentation.
+# ---------------------------------------------------------------------------
+logic_path = NATIVE / "tests" / "logic.test.mjs"
+logic = read(logic_path)
+logic = replace_once(
+    logic,
+    'assert.ok(strongCandidateScore > weakCandidateScore);',
+    '''assert.ok(strongCandidateScore > weakCandidateScore);
+
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "Normal" },
+    { title: "Normal" },
+    "https://upload.wikimedia.org/normal-distribution-diagram.svg"
+  ),
+  true
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "Example Film" },
+    { title: "Example Film" },
+    "https://upload.wikimedia.org/example-film-poster.jpg"
+  ),
+  false
+);
+const catalogs = metadata.externalCatalogUrls(
+  { mode: "tv", id: "1" },
+  { title: "Mating Season" }
+);
+assert.match(catalogs.fastflix, /fastflix\\.to\\/tvshows\\/mating-season/);
+assert.match(catalogs.seeflix, /seeflix\\.to\\/mating-season/);
+assert.match(catalogs.movies123, /123moviesfree\\.net\\/search\\/mating-season/);''',
+    "artwork and catalog tests",
+)
+write(logic_path, logic)
+
+smoke_path = NATIVE / "tests" / "static-smoke.test.mjs"
+smoke = read(smoke_path)
+smoke = replace_once(
+    smoke,
+    '  "importButton"',
+    '  "importButton",\n  "fastflixButton",\n  "seeflixButton",\n  "movies123Button"',
+    "external button smoke IDs",
+)
+smoke = replace_once(
+    smoke,
+    'assert.match(metadata, /RELATED_REPAIR_LIMIT/);',
+    '''assert.match(metadata, /RELATED_REPAIR_LIMIT/);
+assert.match(metadata, /isLikelyBadArtwork/);
+assert.match(metadata, /searchCommonsArtwork/);
+assert.match(metadata, /externalCatalogUrls/);
+assert.ok(
+  html.indexOf('class="source-panel panel"') <
+  html.indexOf('id="playerShell"')
+);''',
+    "metadata and top-provider smoke checks",
+)
+smoke = replace_once(
+    smoke,
+    'assert.match(webview, /external-denied/);',
+    '''assert.match(webview, /external-denied/);
+assert.match(webview, /fastflix\\.to/);
+assert.match(webview, /123moviesfree\\.net/);
+assert.match(webview, /executable_directory/);''',
+    "portable cache smoke checks",
+)
+write(smoke_path, smoke)
+
+# Ensure the layout test expects the provider controls above the player.
+builtin_test = NATIVE / "tests" / "builtin-library.test.mjs"
+builtin = read(builtin_test)
+builtin = builtin.replace(
+    "  assert.ok(html.indexOf('class=\"transport panel\"') < html.indexOf('class=\"source-panel panel\"'));\n  assert.ok(html.indexOf('class=\"source-panel panel\"') < html.indexOf('class=\"current-card panel\"'));",
+    "  assert.ok(html.indexOf('class=\"source-panel panel\"') < html.indexOf('id=\"playerShell\"'));\n  assert.ok(html.indexOf('class=\"transport panel\"') < html.indexOf('class=\"current-card panel\"'));",
+)
+write(builtin_test, builtin)
+
+readme_path = NATIVE / "README.md"
+readme = read(readme_path)
+portable_note = """
+
+## Portable data and image cache
+
+The Windows build keeps its complete WebView2 profile in `data/` beside `VidCoreNativePlayer.exe`. That folder contains browser cache, resolved remote artwork cache, IndexedDB, localStorage, popup-block history, and other runtime state. Moving the application folder moves its data with it; the player no longer creates its own application folder under Local AppData.
+
+Artwork resolution rejects diagrams, unrelated subject images, actor/director portraits, cast photos, and red-carpet images. It prefers film-poster, logo, and film-still properties tied to the exact Wikidata title, then uses strict Wikipedia and Wikimedia Commons fallbacks.
+"""
+if "## Portable data and image cache" not in readme:
+    readme += portable_note
+write(readme_path, readme)
+
+# Mirror the tested web assets into the web player after all edits.
+for name in [
+    "index.html", "styles.css", "app.js", "metadata.js", "scanner.js",
+    "storage.js", "providers.js", "builtin-library.js"
+]:
+    shutil.copy2(NATIVE / "assets" / name, WEB / name)
+
+# Root mission ledger: preserve provider-limited items and record every completed mission.
+mission_path = ROOT / "missioncache.md"
+mission = read(mission_path)
+mission = mission.replace(
+    "- [x] Move Play/provider controls and the resolve metadata card below the Stop/transport section.",
+    "- [x] Move the provider/play controls back to the top while keeping the resolve metadata card below Stop/transport.",
+)
+completed = """
+- [x] Reject mismatched Wikipedia diagrams, person portraits, cast photos, red-carpet images, and unrelated subject artwork.
+- [x] Prefer exact-title Wikidata poster/logo properties and add a strict Wikimedia Commons artwork fallback.
+- [x] Remove already-saved mismatched artwork non-destructively while preserving lists, notes, and watched state.
+- [x] Display resolved artwork with its full aspect ratio instead of cropping it.
+- [x] Add FastFlix, SeeFlix, and 123Movies lookup buttons to the current metadata card and saved media cards.
+- [x] Correct right-sidebar card/button wrapping and current-card action formatting across desktop and collapsed layouts.
+- [x] Keep the native WebView2 profile, image/browser cache, IndexedDB, localStorage, popup history, and settings in `data/` beside the executable.
+- [x] Resolve native assets relative to the executable instead of the launch working directory.
+- [x] Publish release `v0.2.5` with artwork validation, external catalog links, top provider controls, corrected formatting, and portable storage.
+"""
+if "Reject mismatched Wikipedia diagrams" not in mission:
+    mission = mission.replace("\n## Open / provider-limited", "\n" + completed + "\n## Open / provider-limited")
+write(mission_path, mission)
+
+# Root version is already the release trigger but normalize whitespace.
+write(ROOT / "VERSION", "0.2.5\n")
+
+print("Applied v0.2.5 artwork, layout, links, portable storage, tests, and mission ledger.")
