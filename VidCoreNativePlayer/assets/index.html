@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>VidCore Native Player</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar panel">
+      <div class="brand">
+        <div class="brand-mark">▶</div>
+        <div>
+          <strong>VidCore Native Player</strong>
+          <span>C++23 modules · full library · native popup shield</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="shieldHelpButton" class="button subtle">Shield details</button>
+        <button id="dataFolderButton" class="button subtle">Data folder</button>
+        <div class="shield-pill" title="Native popup interception is active.">
+          <span class="shield-dot"></span>
+          Shield active
+          <b id="blockedCount">0</b>
+        </div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="main-column">
+        <section class="source-panel panel">
+          <label class="field provider-field">
+            <span>Provider</span>
+            <input
+                id="baseUrl"
+                type="url"
+                value="https://vidcore.net"
+                spellcheck="false"
+                autocomplete="off">
+          </label>
+
+          <label class="field mode-field">
+            <span>Type</span>
+            <select id="mode">
+              <option value="movie">Movie</option>
+              <option value="tv">TV</option>
+            </select>
+          </label>
+
+          <label class="field id-field">
+            <span>IMDb / TMDB ID</span>
+            <input
+                id="mediaId"
+                value="1"
+                spellcheck="false"
+                autocomplete="off">
+          </label>
+
+          <label id="seasonField" class="field number-field hidden">
+            <span>Season</span>
+            <input id="season" type="number" min="0" step="1" value="1">
+          </label>
+
+          <label id="episodeField" class="field number-field hidden">
+            <span>Episode</span>
+            <input id="episode" type="number" min="1" step="1" value="1">
+          </label>
+
+          <button
+              id="previousButton"
+              class="button"
+              title="Scan backward to the nearest public metadata match">
+            Previous
+          </button>
+
+          <button id="playButton" class="button primary">Play</button>
+
+          <button
+              id="nextButton"
+              class="button"
+              title="Scan forward to the nearest public metadata match">
+            Next
+          </button>
+
+          <select id="randomMode" class="random-mode" aria-label="Random mode">
+            <option value="database" selected>Database pick</option>
+            <option value="number">Random ID</option>
+          </select>
+
+          <button id="randomButton" class="button">Random</button>
+        </section>
+
+        <section class="current-card panel">
+          <div id="currentPoster" class="current-poster fallback">?</div>
+
+          <div class="current-copy">
+            <div class="eyebrow" id="currentType">Movie</div>
+            <h1 id="currentTitle">Movie 1</h1>
+            <div id="currentMeta" class="metadata-row">
+              <span>Unresolved</span>
+            </div>
+            <p id="currentDescription">
+              Play directly, resolve metadata, or scan to a verified public identifier.
+            </p>
+            <div id="currentGenres" class="tags"></div>
+          </div>
+
+          <div class="current-actions">
+            <button id="resolveButton" class="button">Resolve</button>
+            <button id="favoriteButton" class="button">★ Save</button>
+            <button id="imdbButton" class="button hidden">IMDb</button>
+            <button id="tmdbButton" class="button hidden">TMDB</button>
+            <button id="wikipediaButton" class="button hidden">Wikipedia</button>
+          </div>
+        </section>
+
+        <section id="playerShell" class="player-shell panel">
+          <iframe
+              id="player"
+              title="Streaming player"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin">
+          </iframe>
+
+          <div id="emptyPlayer" class="player-empty">
+            <div class="play-glyph">▶</div>
+            <strong>Ready at movie ID 1</strong>
+            <span>Press Play or use metadata discovery.</span>
+          </div>
+        </section>
+
+        <section class="transport panel">
+          <div class="transport-row">
+            <button id="stopButton" class="button danger">Stop</button>
+            <button id="copyUrlButton" class="button">Copy URL</button>
+            <button id="muteButton" class="button">Mute</button>
+            <button id="theaterModeButton" class="button">Theater</button>
+            <button id="fullscreenButton" class="button">Fullscreen</button>
+            <button id="devtoolsButton" class="button">DevTools</button>
+          </div>
+
+          <div class="zoom-row">
+            <span>UI zoom</span>
+            <button id="zoomOutButton" class="round-button">−</button>
+            <input
+                id="zoomSlider"
+                type="range"
+                min="50"
+                max="200"
+                step="10"
+                value="100">
+            <button id="zoomInButton" class="round-button">+</button>
+            <output id="zoomOutput">100%</output>
+          </div>
+        </section>
+
+        <section id="statusPanel" class="status-panel panel">
+          <div>
+            <strong id="statusTitle">Starting library</strong>
+            <span id="statusText">
+              IndexedDB will be used when available, with a localStorage fallback.
+            </span>
+          </div>
+          <button id="reloadShellButton" class="button subtle">Reload app</button>
+        </section>
+      </section>
+
+      <aside class="sidebar panel">
+        <div class="sidebar-head">
+          <div>
+            <h2>Your Library</h2>
+            <p>Lists, metadata, Continue Watching, discovery, and backup.</p>
+          </div>
+          <button id="storageInfoButton" class="round-button" title="Storage information">i</button>
+        </div>
+
+        <nav class="tabs">
+          <button class="tab active" data-panel="library">Library</button>
+          <button class="tab" data-panel="favorites">Favorites</button>
+          <button class="tab" data-panel="continue">Continue</button>
+          <button class="tab" data-panel="recommended">Recommended</button>
+          <button class="tab" data-panel="related">Related</button>
+          <button class="tab" data-panel="blocked">Blocked</button>
+        </nav>
+
+        <section id="libraryPanel" class="side-panel">
+          <div class="library-tools">
+            <input
+                id="librarySearch"
+                type="search"
+                placeholder="Search saved titles…"
+                autocomplete="off">
+
+            <div class="tool-row">
+              <input
+                  id="newListName"
+                  placeholder="New list name"
+                  maxlength="40">
+              <button id="addListButton" class="button">Add list</button>
+            </div>
+
+            <div class="tool-row">
+              <button id="resolveListButton" class="button">Resolve list</button>
+              <button id="markListWatchedButton" class="button">Mark watched</button>
+            </div>
+
+            <div id="listChips" class="list-chips"></div>
+          </div>
+
+          <div id="libraryCards" class="card-list"></div>
+        </section>
+
+        <section id="favoritesPanel" class="side-panel hidden">
+          <div id="favoritesCards" class="card-list"></div>
+        </section>
+
+        <section id="continuePanel" class="side-panel hidden">
+          <div id="continueCards" class="card-list"></div>
+        </section>
+
+        <section id="recommendedPanel" class="side-panel hidden">
+          <div id="recommendedCards" class="card-list"></div>
+        </section>
+
+        <section id="relatedPanel" class="side-panel hidden">
+          <div id="relatedCards" class="card-list"></div>
+        </section>
+
+        <section id="blockedPanel" class="side-panel hidden">
+          <div class="blocked-summary">
+            <span>
+              Attempts caught this run are shown below. Learned hosts persist under Local AppData.
+            </span>
+            <button id="clearBlockedButton" class="button danger">Clear learned hosts</button>
+          </div>
+          <div id="blockedCards" class="card-list"></div>
+        </section>
+
+        <footer class="sidebar-footer">
+          <button id="exportButton" class="button subtle">Export JSON</button>
+          <button id="importButton" class="button subtle">Import JSON</button>
+          <input
+              id="importFile"
+              class="hidden"
+              type="file"
+              accept="application/json,.json">
+          <span id="storageMode">Storage starting…</span>
+        </footer>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="saveDialog">
+    <form id="saveForm" class="dialog-body" method="dialog">
+      <h3 id="saveDialogTitle">Save to library</h3>
+
+      <label class="field">
+        <span>List</span>
+        <select id="saveList"></select>
+      </label>
+
+      <label class="field">
+        <span>Notes</span>
+        <textarea
+            id="saveNotes"
+            rows="5"
+            placeholder="Optional notes"></textarea>
+      </label>
+
+      <label class="check-row">
+        <input id="saveWatched" type="checkbox">
+        <span>Mark watched</span>
+      </label>
+
+      <div class="dialog-actions split-actions">
+        <button
+            id="deleteDialogButton"
+            class="button danger hidden"
+            type="button">
+          Delete from library
+        </button>
+        <button id="cancelSaveButton" class="button" type="button">Cancel</button>
+        <button class="button primary" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="storageDialog">
+    <div class="dialog-body">
+      <h3>Library storage</h3>
+      <p>
+        Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. JSON export is the portable backup.
+      </p>
+      <p>
+        Exact playback position is unavailable because the provider frame is cross-origin. Continue Watching records played titles and manual completion state.
+      </p>
+      <div class="dialog-actions">
+        <button id="closeStorageDialogButton" class="button primary">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="shieldDialog">
+    <div class="dialog-body">
+      <h3>Native popup shield</h3>
+      <p>
+        The C++ host cancels WebView2 new-window requests and top-level navigation hijacks. A document-created guard also blocks window.open, target-blank links, external click redirects, middle-click navigation, and external form submissions inside every frame.
+      </p>
+      <p>
+        This prevents popup tabs and window hijacks. It does not promise to remove every visual advertisement rendered inside the provider frame.
+      </p>
+      <div class="dialog-actions">
+        <button id="closeShieldDialogButton" class="button primary">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="storage.js"></script>
+  <script src="metadata.js"></script>
+  <script src="scanner.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+/build/
+/external/
+*.user
+*.VC.db
+*.suo

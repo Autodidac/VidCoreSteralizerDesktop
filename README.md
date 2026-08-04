@@ -1,14 +1,17 @@
-# Cpp_Repo_Template
+# VidCore Steralizer Desktop
 
-## Header Size 2
+Two maintained VidCore players live in separate folders:
 
-### Header Size 3
+- [`VidCoreNativePlayer/`](VidCoreNativePlayer/) — C++23 modules, Win32, and WebView2 with native popup/new-window interception.
+- [`VidCoreWebPlayer/`](VidCoreWebPlayer/) — standalone browser version with the same metadata, discovery, and library workflow.
 
+## Current corrections
 
+- Database Pick is the default random mode.
+- `All` is followed permanently by `Favorites` in list controls.
+- Favorites also has its own top-level tab beside Library, Continue, Recommended, and Related.
+- Delete is available only inside the Edit window, away from Play.
+- Cover resolution uses Wikidata SPARQL, direct Wikidata entities, exact Wikipedia pages, and scored Wikipedia search fallback.
+- Related-title images receive the same bounded repair pass.
 
----
-
-#### Template Repo
-
-
-- A Public Template Repo To Clone From
+Start with the README inside the version you want to run.
