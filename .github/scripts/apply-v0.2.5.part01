@@ -31,11 +31,16 @@ def regex_once(text: str, pattern: str, replacement: str, label: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Metadata artwork quality and external catalog links.
+# Metadata artwork quality, Commons fallback, and external catalog links.
 # ---------------------------------------------------------------------------
 metadata_path = NATIVE / "assets" / "metadata.js"
 metadata = read(metadata_path)
-
+metadata = replace_once(
+    metadata,
+    '  const WIKIPEDIA_ENDPOINT = "https://en.wikipedia.org/w/api.php";',
+    '  const WIKIPEDIA_ENDPOINT = "https://en.wikipedia.org/w/api.php";\n  const COMMONS_ENDPOINT = "https://commons.wikimedia.org/w/api.php";',
+    "Commons endpoint",
+)
 metadata = replace_once(
     metadata,
     "  function needsRepair(entry) {\n    return !entry?.image ||\n      !entry?.description ||\n      isGenericTitle(entry, entry?.title);\n  }",
@@ -125,7 +130,56 @@ artwork_helpers = r'''
     if (!mediaTerms.test(combined)) return false;
     return similarity >= 0.6 || normalizeSearchText(pageTitle) === normalizeSearchText(expectedTitle);
   }
+
+  function slugifyTitle(value) {
+    return normalizeSearchText(value).replaceAll(" ", "-");
+  }
+
+  function externalCatalogUrls(entry, metadata) {
+    const title = metadata?.title || entry?.title || "";
+    if (!title || isGenericTitle(entry, title)) {
+      return { fastflix: "", seeflix: "", movies123: "" };
+    }
+
+    const slug = slugifyTitle(title);
+    const fastflixType = entry.mode === "tv" ? "tvshows" : "movies";
+    return {
+      fastflix: `https://fastflix.to/${fastflixType}/${slug}/`,
+      seeflix: `https://ww4.seeflix.to/${slug}/`,
+      movies123: `https://ww8.123moviesfree.net/search/${slug}/`
+    };
+  }
 '''
 metadata = replace_once(
     metadata,
-    "\n  function wikipediaSearchQueries(entry
+    "\n  function wikipediaSearchQueries(entry, metadata) {",
+    artwork_helpers + "\n  function wikipediaSearchQueries(entry, metadata) {",
+    "insert artwork helpers",
+)
+
+metadata = replace_once(
+    metadata,
+    '    return `SELECT ?item ?itemLabel ?itemDescription ?date ?image ?imdb ?movieTmdb ?tvTmdb ?article',
+    '    return `SELECT ?item ?itemLabel ?itemDescription ?date ?poster ?logo ?image ?imdb ?movieTmdb ?tvTmdb ?article',
+    "metadata query select poster and logo",
+)
+metadata = replace_once(
+    metadata,
+    "        OPTIONAL { ?item wdt:P18 ?image. }",
+    "        OPTIONAL { ?item wdt:P3383 ?poster. }\n        OPTIONAL { ?item wdt:P154 ?logo. }\n        OPTIONAL { ?item wdt:P18 ?image. }",
+    "metadata query artwork properties",
+)
+metadata = replace_once(
+    metadata,
+    "      GROUP BY ?item ?itemLabel ?itemDescription ?date ?image ?imdb\n               ?movieTmdb ?tvTmdb ?article",
+    "      GROUP BY ?item ?itemLabel ?itemDescription ?date ?poster ?logo ?image ?imdb\n               ?movieTmdb ?tvTmdb ?article",
+    "metadata query group by artwork",
+)
+metadata = replace_once(
+    metadata,
+    '      image: bindingValue(binding, "image").replace(/^http:/, "https:"),',
+    '''      image: selectArtworkImage(entry, {
+        title: bindingValue(binding, "itemLabel") || fallbackTitle(entry),
+        year: bindingValue(binding, "date").slice(0, 4)
+      }, [
+        { kind: "poster", value: bindingValue(binding, "poster") },
