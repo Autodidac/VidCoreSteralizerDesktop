@@ -144,7 +144,8 @@ public:
         if (all_digits(tmdb)) {
             const auto type = job.mode == L"tv" ? L"tv" : L"movie";
             const auto base =
-                L"https://www.themoviedb.org/" + type + L"/" + tmdb;
+                std::wstring{L"https://www.themoviedb.org/"} +
+                type + L"/" + tmdb;
             job.pages.push_back({2, base});
             job.pages.push_back({3, base + L"/images/posters"});
         }
@@ -572,10 +573,10 @@ private:
     void finish_discovery() {
         if (!active_) return;
         const auto json =
-            L"{"imdbPrimary":" + active_->results[0] +
-            L","imdbMore":" + active_->results[1] +
-            L","tmdbPrimary":" + active_->results[2] +
-            L","tmdbMore":" + active_->results[3] + L"}";
+            std::wstring{L"{\"imdbPrimary\":"} + active_->results[0] +
+            L",\"imdbMore\":" + active_->results[1] +
+            L",\"tmdbPrimary\":" + active_->results[2] +
+            L",\"tmdbMore\":" + active_->results[3] + L"}";
         emit(
             L"artwork-sources|" + active_->request_id + L"|" + json
         );
