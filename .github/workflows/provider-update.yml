@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.provider-update-trigger'
+      - 'provider-update-trigger.txt'
   workflow_dispatch:
 
 permissions:
@@ -40,7 +40,7 @@ jobs:
       - name: Commit update
         shell: bash
         run: |
-          rm -f .provider-update-trigger
+          rm -f .provider-update-trigger provider-update-trigger.txt
           rm -f .github/workflows/provider-update.yml
           rm -f .github/scripts/apply-v0.2.2.py
           rmdir .github/scripts 2>/dev/null || true
