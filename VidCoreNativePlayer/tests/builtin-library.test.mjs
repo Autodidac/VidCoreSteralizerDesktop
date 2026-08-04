@@ -12,7 +12,7 @@ const repositoryRoot = path.resolve(nativeRoot, "..");
 for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"]) {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   assert.ok(html.indexOf('class="source-panel panel"') < html.indexOf('id="playerShell"'));
-  assert.ok(html.indexOf('class="transport panel"') < html.indexOf('class="current-card panel"'));
+  assert.ok(html.indexOf('class="current-card panel"') < html.indexOf('id="playerShell"'));
   assert.ok(html.indexOf('src="builtin-library.js"') < html.indexOf('src="storage.js"'));
 
   const context = {
@@ -25,9 +25,10 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
   context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root, "builtin-library.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(root, "builtin-additions.js"), "utf8"), context);
   const library = await context.VidCoreBuiltInLibraryPromise;
   assert.equal(library.version, 2);
-  assert.equal(library.favorites.length, 105);
+  assert.equal(library.favorites.length, 108);
   assert.equal(library.lists.length, 24);
   assert.equal(library.history.length, 0);
 }
@@ -36,4 +37,4 @@ const storage = fs.readFileSync(path.join(nativeRoot, "assets", "storage.js"), "
 assert.match(storage, /BUILTIN_SEED_STATE_KEY/);
 assert.match(storage, /knownFavorites\.has\(entry\.key\)/);
 assert.match(storage, /if \(!await state\.backend\.get\(STORES\.favorites, entry\.key\)\)/);
-console.log("Built-in library merge and lower-control layout checks passed.");
+console.log("Built-in library additions and compact top-layout checks passed.");

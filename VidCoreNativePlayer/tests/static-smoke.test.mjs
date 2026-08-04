@@ -8,10 +8,16 @@ const root = path.resolve(directory, "..");
 const html = fs.readFileSync(path.join(root, "assets", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "assets", "app.js"), "utf8");
 const metadata = fs.readFileSync(path.join(root, "assets", "metadata.js"), "utf8");
+const styles = fs.readFileSync(path.join(root, "assets", "styles.css"), "utf8");
 const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
   "utf8"
 );
+const imageCache = fs.readFileSync(
+  path.join(root, "src", "vidcore.image_cache.ixx"),
+  "utf8"
+);
+const cmake = fs.readFileSync(path.join(root, "CMakeLists.txt"), "utf8");
 
 for (const id of [
   "previousButton",
@@ -63,6 +69,15 @@ assert.ok(
   html.indexOf('class="source-panel panel"') <
   html.indexOf('id="playerShell"')
 );
+assert.ok(
+  html.indexOf('class="current-card panel"') <
+  html.indexOf('id="playerShell"')
+);
+assert.match(html, /Shielded Native Stream Player/);
+assert.doesNotMatch(html, /id="blockedCount"/);
+assert.match(html, /builtin-additions\.js/);
+assert.match(styles, /--primary: #2f8cff/);
+assert.match(styles, /aspect-ratio: 1/);
 
 assert.match(webview, /NewWindowRequested/);
 assert.match(webview, /AddScriptToExecuteOnDocumentCreated/);
@@ -73,3 +88,18 @@ assert.match(webview, /123moviesfree\.net/);
 assert.match(webview, /executable_directory/);
 
 console.log("Static feature, metadata-repair, and popup-shield checks passed.");
+
+
+assert.match(app, /resolve-image/);
+assert.match(app, /prune-image-cache/);
+assert.match(app, /delete-image-cache/);
+assert.match(app, /preferOfficialArtwork/);
+assert.match(webview, /ImageCache/);
+assert.match(webview, /image-resolved/);
+assert.doesNotMatch(webview, /blocked-count/);
+assert.match(imageCache, /media-imdb/);
+assert.match(imageCache, /v2\.sg\.media-imdb\.com/);
+assert.match(imageCache, /themoviedb\.org/);
+assert.match(imageCache, /WinHttpOpen/);
+assert.match(cmake, /vidcore\.image_cache\.ixx/);
+assert.match(cmake, /winhttp/);

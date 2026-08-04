@@ -95,7 +95,6 @@
     closeStorageDialogButton: $("#closeStorageDialogButton"),
     shieldDialog: $("#shieldDialog"),
     closeShieldDialogButton: $("#closeShieldDialogButton"),
-    blockedCount: $("#blockedCount")
   };
 
   const state = {
@@ -110,11 +109,73 @@
     theater: false,
     editingKey: "",
     dialogEntry: null,
-    scanner: null
+    scanner: null,
+    artworkSequence: 0,
+    artworkRequests: new Map()
   };
 
   function postHost(message) {
     globalThis.chrome?.webview?.postMessage(String(message));
+  }
+
+
+
+  function mediaCacheIdentity(entry, metadata = entry) {
+    const mode = entry?.mode === "tv" ? "tv" : "movie";
+    const imdb = String(metadata?.imdb || (/^tt\d+$/i.test(entry?.id || "") ? entry.id : "")).toLowerCase();
+    if (imdb) return `${mode}:imdb:${imdb}`;
+    const tmdb = String(metadata?.tmdb || (/^\d+$/.test(entry?.id || "") ? entry.id : ""));
+    if (tmdb) return `${mode}:tmdb:${tmdb}`;
+    return `${mode}:id:${String(entry?.id || "unknown").toLowerCase()}`;
+  }
+
+  function requestNativeArtwork(entry, metadata = entry) {
+    if (!globalThis.chrome?.webview) {
+      return Promise.resolve("");
+    }
+
+    const requestId = String(++state.artworkSequence);
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        state.artworkRequests.delete(requestId);
+        resolve("");
+      }, 18000);
+      state.artworkRequests.set(requestId, { resolve, timer });
+      postHost([
+        "resolve-image",
+        requestId,
+        entry.mode === "tv" ? "tv" : "movie",
+        entry.id || "",
+        metadata?.imdb || "",
+        metadata?.tmdb || ""
+      ].join("|"));
+    });
+  }
+
+  async function preferOfficialArtwork(entry, metadata) {
+    try {
+      const image = await requestNativeArtwork(entry, metadata);
+      return image
+        ? {
+            ...metadata,
+            image,
+            artworkSource: "IMDb/TMDB local cache"
+          }
+        : metadata;
+    } catch {
+      return metadata;
+    }
+  }
+
+  async function pruneNativeArtworkCache() {
+    if (!state.storageReady || !globalThis.chrome?.webview) return;
+    const favorites = await VidCoreStorage.getAll(
+      VidCoreStorage.STORES.favorites
+    );
+    const identities = [...new Set(
+      favorites.map(entry => mediaCacheIdentity(entry, entry))
+    )];
+    postHost(`prune-image-cache|${identities.join(",")}`);
   }
 
   function setStatus(title, text, type = "") {
@@ -395,7 +456,8 @@
       );
     }
 
-    const metadata = await VidCoreMetadata.resolve(entry);
+    let metadata = await VidCoreMetadata.resolve(entry);
+    metadata = await preferOfficialArtwork(entry, metadata);
 
     if (isCurrentEntry(entry)) {
       state.currentMetadata = metadata;
@@ -1047,6 +1109,28 @@
       }
     );
 
+    const cachedImage = await requestNativeArtwork(entry, {
+      ...existing,
+      ...(metadata || {})
+    });
+    if (cachedImage) {
+      const saved = await VidCoreStorage.get(
+        VidCoreStorage.STORES.favorites,
+        key
+      );
+      if (saved) {
+        await VidCoreStorage.put(
+          VidCoreStorage.STORES.favorites,
+          {
+            ...saved,
+            image: cachedImage,
+            artworkSource: "IMDb/TMDB local cache",
+            updatedAt: new Date().toISOString()
+          }
+        );
+      }
+    }
+
     if (elements.saveWatched.checked) {
       const history = await VidCoreStorage.get(
         VidCoreStorage.STORES.history,
@@ -1076,6 +1160,15 @@
       VidCoreStorage.STORES.favorites,
       key
     );
+    const identity = mediaCacheIdentity(entry, entry);
+    const remainingFavorites = await VidCoreStorage.getAll(
+      VidCoreStorage.STORES.favorites
+    );
+    if (!remainingFavorites.some(candidate =>
+      mediaCacheIdentity(candidate, candidate) === identity
+    )) {
+      postHost(`delete-image-cache|${identity}`);
+    }
     if (elements.saveDialog.open) {
       elements.saveDialog.close();
     }
@@ -1197,17 +1290,18 @@
         entries,
         3,
         async (entry, metadata) => {
+          const officialMetadata = await preferOfficialArtwork(entry, metadata);
           await VidCoreStorage.put(
             VidCoreStorage.STORES.favorites,
             {
               ...entry,
-              ...metadata,
+              ...officialMetadata,
               updatedAt: new Date().toISOString()
             }
           );
           state.scanner?.addResolvedImage({
             ...entry,
-            ...metadata
+            ...officialMetadata
           });
           completed += 1;
           setStatus(
@@ -1339,6 +1433,7 @@
 
       await renderAllLibraryViews();
       renderRecommended();
+      await pruneNativeArtworkCache();
 
       setStatus(
         "Backup imported",
@@ -1404,7 +1499,6 @@
     const payload = first < 0 ? "" : text.slice(first + 1);
 
     if (command === "blocked-count") {
-      elements.blockedCount.textContent = payload || "0";
       return;
     }
 
@@ -1423,6 +1517,21 @@
       ].slice(0, 100);
       renderBlocked();
       setStatus("Popup blocked", url || kind, "ok");
+      return;
+    }
+
+    if (command === "image-resolved") {
+      const second = payload.indexOf("|");
+      const requestId = second < 0 ? payload : payload.slice(0, second);
+      const remainder = second < 0 ? "" : payload.slice(second + 1);
+      const third = remainder.indexOf("|");
+      const image = third < 0 ? remainder : remainder.slice(0, third);
+      const pending = state.artworkRequests.get(requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        state.artworkRequests.delete(requestId);
+        pending.resolve(image || "");
+      }
       return;
     }
 
@@ -1633,6 +1742,7 @@
           : "localStorage fallback active";
 
       await renderAllLibraryViews();
+      await pruneNativeArtworkCache();
       const migrated = migration.favorites + migration.history;
       const rejectedArtwork = artworkCleanup.favorites + artworkCleanup.history + artworkCleanup.queue;
       setStatus(

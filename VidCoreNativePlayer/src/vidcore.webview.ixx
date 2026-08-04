@@ -16,6 +16,7 @@ module;
 export module vidcore.webview;
 
 import vidcore.blocklist;
+import vidcore.image_cache;
 import vidcore.uri;
 
 export namespace vidcore {
@@ -376,7 +377,6 @@ private:
             : message.substr(separator + 1);
 
         if (command == L"ready") {
-            post_event(L"blocked-count|" + std::to_wstring(blocklist_.size()));
             post_event(L"zoom|1.00");
             post_event(L"muted|0");
             return;
@@ -389,6 +389,51 @@ private:
                 ? std::wstring{}
                 : payload.substr(next + 1);
             record_blocked(kind, target);
+            return;
+        }
+
+
+
+        if (command == L"resolve-image") {
+            std::array<std::wstring, 5> fields{};
+            std::size_t field_index = 0;
+            std::size_t start = 0;
+            while (field_index < fields.size()) {
+                const auto next = payload.find(L'|', start);
+                fields[field_index++] = payload.substr(
+                    start,
+                    next == std::wstring::npos
+                        ? std::wstring::npos
+                        : next - start
+                );
+                if (next == std::wstring::npos) break;
+                start = next + 1;
+            }
+
+            const auto result = image_cache_.resolve(
+                fields[1],
+                fields[2],
+                fields[3],
+                fields[4]
+            );
+            if (result) {
+                post_event(
+                    L"image-resolved|" + fields[0] + L"|" +
+                    uri::file_url(result->path) + L"|" + result->source
+                );
+            } else {
+                post_event(L"image-resolved|" + fields[0] + L"||none");
+            }
+            return;
+        }
+
+        if (command == L"delete-image-cache") {
+            image_cache_.remove(payload);
+            return;
+        }
+
+        if (command == L"prune-image-cache") {
+            image_cache_.prune(payload);
             return;
         }
 
@@ -453,7 +498,6 @@ private:
 
         if (command == L"clear-blocklist") {
             blocklist_.clear();
-            post_event(L"blocked-count|0");
             post_event(L"blocked-cleared|");
             return;
         }
@@ -481,7 +525,6 @@ private:
         event.push_back(L'|');
         event.append(target);
         post_event(event);
-        post_event(L"blocked-count|" + std::to_wstring(blocklist_.size()));
     }
 
     void post_event(const std::wstring& message) const {
@@ -500,6 +543,7 @@ private:
     std::filesystem::path assets_index_;
     std::wstring home_url_;
     PopupBlocklist blocklist_;
+    ImageCache image_cache_{executable_directory() / L"cache"};
     ErrorHandler error_handler_;
 
     Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment_;

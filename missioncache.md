@@ -28,7 +28,7 @@
 - [x] Publish release `v0.2.2` with refreshed native and web-player assets.
 - [x] Correct the follow-up release version and publish `v0.2.3`.
 
-- [x] Move the provider/play controls back to the top while keeping the resolve metadata card below Stop/transport.
+- [x] Keep both the provider/play controls and compact resolve metadata card above the player.
 - [x] Bundle the supplied 105-title, 24-list library into both players.
 - [x] Merge only previously unseen built-in titles and lists without overwriting edits or restoring deleted seed items.
 - [x] Publish release `v0.2.4` with the built-in starter library.
@@ -43,6 +43,27 @@
 - [x] Keep the native WebView2 profile, image/browser cache, IndexedDB, localStorage, popup history, and settings in `data/` beside the executable.
 - [x] Resolve native assets relative to the executable instead of the launch working directory.
 - [x] Publish release `v0.2.5` with artwork validation, external catalog links, top provider controls, corrected formatting, and portable storage.
+
+
+- [x] Resolve artwork from IMDb title/media imagery first instead of using Wikipedia as the primary image source.
+- [x] Use TMDB title/backdrop imagery as the second official artwork source.
+- [x] Keep strict Wikidata, Wikipedia, and Wikimedia Commons artwork only as fallback sources.
+- [x] Cache resolved native artwork in `cache/` beside the executable with readable media-based filenames.
+- [x] Reuse one cached image across VidCore, YTHD, and VidUp provider selections.
+- [x] Reuse cached artwork without repeating IMDb/TMDB requests while the title remains saved.
+- [x] Delete cached artwork when the final saved library copy is removed.
+- [x] Prune orphaned cache images at startup and after backup import.
+
+
+- [x] Rename the visible application and native window to `Shielded Native Stream Player`.
+- [x] Remove the blocker count while keeping native popup protection active and accessible through Shield details.
+- [x] Convert the interface accent theme from purple to blue in both players.
+- [x] Make current and library artwork square instead of tall poster slots.
+- [x] Reduce the resolve metadata card height and use horizontal wrapping action buttons.
+- [x] Keep provider/play controls and the compact resolve card together above the player.
+- [x] Add Wednesday, Landman, and Mating Season from the latest backup to built-in defaults without overwriting user edits.
+- [x] Preserve non-destructive seed merging so deleted defaults stay deleted and only unseen defaults are added.
+- [x] Publish release `v0.2.6` with the completed compact blue redesign and refreshed defaults.
 
 ## Open / provider-limited
 

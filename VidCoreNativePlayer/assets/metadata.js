@@ -381,6 +381,10 @@
 
   function isLikelyBadArtwork(entry, metadata, image, sourceKind = "image") {
     if (!image) return false;
+    try {
+      if (new URL(String(image)).protocol === "file:") return false;
+    } catch {
+    }
     if (sourceKind === "poster" || sourceKind === "logo") return false;
 
     const imageText = artworkText(image);

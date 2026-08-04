@@ -134,3 +134,14 @@ Use the player only with sources and media you are authorized to access.
 The Windows build keeps its complete WebView2 profile in `data/` beside `VidCoreNativePlayer.exe`. That folder contains browser cache, resolved remote artwork cache, IndexedDB, localStorage, popup-block history, and other runtime state. Moving the application folder moves its data with it; the player no longer creates its own application folder under Local AppData.
 
 Artwork resolution rejects diagrams, unrelated subject images, actor/director portraits, cast photos, and red-carpet images. It prefers film-poster, logo, and film-still properties tied to the exact Wikidata title, then uses strict Wikipedia and Wikimedia Commons fallbacks.
+
+
+## IMDb/TMDB artwork cache
+
+Resolved title artwork now follows this order:
+
+1. IMDb title imagery, using IMDb's title suggestion/media data.
+2. TMDB title-page Open Graph imagery.
+3. Strict Wikidata/Wikipedia/Wikimedia fallbacks only when neither official title source resolves.
+
+The native executable stores downloaded artwork in `cache/` beside `VidCoreNativePlayer.exe`. Cache identity is based on the media identifier rather than the selected playback provider, so VidCore, YTHD, and VidUp reuse the same file. Removing the final saved library copy deletes its cached image, and startup/import pruning removes orphaned files.

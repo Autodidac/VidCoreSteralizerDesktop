@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <title>VidCore Native Player</title>
+  <title>Shielded Native Stream Player</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,8 +15,8 @@
       <div class="brand">
         <div class="brand-mark">▶</div>
         <div>
-          <strong>VidCore Native Player</strong>
-          <span>C++23 modules · full library · native popup shield</span>
+          <strong>Shielded Native Stream Player</strong>
+          <span>C++23 modules · portable library · native popup shield</span>
         </div>
       </div>
 
@@ -26,7 +26,6 @@
         <div class="shield-pill" title="Native popup interception is active.">
           <span class="shield-dot"></span>
           Shield active
-          <b id="blockedCount">0</b>
         </div>
       </div>
     </header>
@@ -96,6 +95,33 @@
           <button id="randomButton" class="button">Random</button>
         </section>
 
+        <section class="current-card panel">
+          <div id="currentPoster" class="current-poster fallback">?</div>
+
+          <div class="current-copy">
+            <div class="eyebrow" id="currentType">Movie</div>
+            <h1 id="currentTitle">Movie 1</h1>
+            <div id="currentMeta" class="metadata-row">
+              <span>Unresolved</span>
+            </div>
+            <p id="currentDescription">
+              Play directly, resolve metadata, or scan to a verified public identifier.
+            </p>
+            <div id="currentGenres" class="tags"></div>
+          </div>
+
+          <div class="current-actions">
+            <button id="resolveButton" class="button">Resolve</button>
+            <button id="favoriteButton" class="button">★ Save</button>
+            <button id="imdbButton" class="button hidden">IMDb</button>
+            <button id="tmdbButton" class="button hidden">TMDB</button>
+            <button id="wikipediaButton" class="button hidden">Wikipedia</button>
+            <button id="fastflixButton" class="button hidden">FastFlix</button>
+            <button id="seeflixButton" class="button hidden">SeeFlix</button>
+            <button id="movies123Button" class="button hidden">123Movies</button>
+          </div>
+        </section>
+
         <section id="playerShell" class="player-shell panel">
           <iframe
               id="player"
@@ -134,33 +160,6 @@
                 value="100">
             <button id="zoomInButton" class="round-button">+</button>
             <output id="zoomOutput">100%</output>
-          </div>
-        </section>
-
-        <section class="current-card panel">
-          <div id="currentPoster" class="current-poster fallback">?</div>
-
-          <div class="current-copy">
-            <div class="eyebrow" id="currentType">Movie</div>
-            <h1 id="currentTitle">Movie 1</h1>
-            <div id="currentMeta" class="metadata-row">
-              <span>Unresolved</span>
-            </div>
-            <p id="currentDescription">
-              Play directly, resolve metadata, or scan to a verified public identifier.
-            </p>
-            <div id="currentGenres" class="tags"></div>
-          </div>
-
-          <div class="current-actions">
-            <button id="resolveButton" class="button">Resolve</button>
-            <button id="favoriteButton" class="button">★ Save</button>
-            <button id="imdbButton" class="button hidden">IMDb</button>
-            <button id="tmdbButton" class="button hidden">TMDB</button>
-            <button id="wikipediaButton" class="button hidden">Wikipedia</button>
-            <button id="fastflixButton" class="button hidden">FastFlix</button>
-            <button id="seeflixButton" class="button hidden">SeeFlix</button>
-            <button id="movies123Button" class="button hidden">123Movies</button>
           </div>
         </section>
 
@@ -326,6 +325,7 @@
   </dialog>
 
   <script src="builtin-library.js"></script>
+  <script src="builtin-additions.js"></script>
   <script src="storage.js"></script>
   <script src="metadata.js"></script>
   <script src="providers.js"></script>

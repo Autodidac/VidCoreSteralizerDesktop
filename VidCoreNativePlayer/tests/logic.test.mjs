@@ -206,3 +206,13 @@ assert.equal(scanner.readQueue().length, 1);
 assert.equal(scanner.readQueue()[0].title, "Test");
 
 console.log("Metadata repair and scanner logic checks passed.");
+
+
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "tt0283003", title: "Snow Dogs" },
+    { title: "Snow Dogs" },
+    "file:///cache/movie-imdb-tt0283003.jpg"
+  ),
+  false
+);
