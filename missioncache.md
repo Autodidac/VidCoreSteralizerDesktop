@@ -26,6 +26,7 @@
 - [x] Preserve import compatibility with version 1 backups containing full `baseUrl` values.
 - [x] Add provider, pause, compact-backup, and legacy-import validation.
 - [x] Publish release `v0.2.2` with refreshed native and web-player assets.
+- [x] Correct the follow-up release version and publish `v0.2.3`.
 
 ## Open / provider-limited
 
