@@ -27,16 +27,14 @@ jobs:
       - name: Apply and commit staged source update
         shell: pwsh
         run: |
-          if (Test-Path '.github/scripts/apply-v0.2.2.py') {
-            python .github/scripts/apply-v0.2.2.py
+          if (Test-Path '.github/scripts/apply-v0.2.4.py') {
+            python .github/scripts/apply-v0.2.4.py
             if ($LASTEXITCODE -ne 0) {
-              throw "The v0.2.2 source update failed with exit code $LASTEXITCODE."
+              throw "The v0.2.4 source update failed with exit code $LASTEXITCODE."
             }
 
-            Remove-Item '.provider-update-trigger' -Force -ErrorAction SilentlyContinue
-            Remove-Item 'provider-update-trigger.txt' -Force -ErrorAction SilentlyContinue
-            Remove-Item '.github/workflows/provider-update.yml' -Force -ErrorAction SilentlyContinue
-            Remove-Item '.github/scripts/apply-v0.2.2.py' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts/apply-v0.2.4.py' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts/seed-v0.2.4.part*' -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts' -Force -ErrorAction SilentlyContinue
 
             git config user.name 'github-actions[bot]'
@@ -44,7 +42,7 @@ jobs:
             git add -A
             git diff --cached --quiet
             if ($LASTEXITCODE -ne 0) {
-              git commit -m 'Add provider-aware playback and compact backups'
+              git commit -m 'Move playback controls and add built-in library'
               if ($LASTEXITCODE -ne 0) { throw 'Source commit failed.' }
               git push
               if ($LASTEXITCODE -ne 0) { throw 'Source push failed.' }
@@ -59,7 +57,7 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.2."
+            throw "VERSION must contain a semantic version such as 0.2.4."
           }
 
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
@@ -112,6 +110,13 @@ jobs:
 
           This release contains both maintained players in separate downloads.
 
+          ### Layout and built-in library
+          - Play/provider controls and the resolve metadata card now sit below the Stop/transport section
+          - The supplied 105-title, 24-list library is bundled into both players
+          - Existing edits are never overwritten
+          - Later releases only add previously unseen built-in titles and lists
+          - Deleted seeded items are not restored
+
           ### Playback and providers
           - Provider selector order: VidCore, YTHD, VidUp
           - Main Play uses the currently selected provider
@@ -122,11 +127,6 @@ jobs:
           ### Library backups
           - Version 2 JSON stores provider categories once and uses compact per-title provider indexes
           - Version 1 backups containing full `baseUrl` values remain import-compatible
-
-          ### Existing features
-          - Native popup, new-window, and navigation-hijack interception
-          - Database Pick discovery, permanent Favorites, Continue Watching, recommendations, and related titles
-          - Wikidata and Wikipedia artwork repair
 
           ### Assets
           - `VidCoreNativePlayer-v$env:VERSION-windows-x64.zip`
