@@ -1,0 +1,116 @@
+name: Build and publish release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Read and validate version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "VERSION must contain a semantic version such as 0.2.1."
+          }
+
+          $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
+          if ($cmake -notmatch "VERSION\s+$([regex]::Escape($version))") {
+            throw "VERSION ($version) does not match VidCoreNativePlayer/CMakeLists.txt."
+          }
+
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "TAG=v$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build and validate native player
+        shell: cmd
+        run: |
+          cd VidCoreNativePlayer
+          call build.bat
+
+      - name: Package native and web players
+        shell: pwsh
+        run: |
+          $dist = Join-Path $PWD 'dist'
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+
+          $nativeStage = Join-Path $dist 'VidCoreNativePlayer'
+          New-Item -ItemType Directory -Force -Path $nativeStage | Out-Null
+          Copy-Item 'VidCoreNativePlayer/build/Release/VidCoreNativePlayer.exe' $nativeStage
+          Copy-Item 'VidCoreNativePlayer/build/Release/assets' (Join-Path $nativeStage 'assets') -Recurse
+          Copy-Item 'VidCoreNativePlayer/README.md' $nativeStage
+          @'
+          @echo off
+          cd /d "%~dp0"
+          start "" VidCoreNativePlayer.exe
+          '@ | Set-Content (Join-Path $nativeStage 'run.bat') -Encoding ascii
+
+          $webStage = Join-Path $dist 'VidCoreWebPlayer'
+          Copy-Item 'VidCoreWebPlayer' $webStage -Recurse
+
+          $nativeZip = Join-Path $dist "VidCoreNativePlayer-v$env:VERSION-windows-x64.zip"
+          $webZip = Join-Path $dist "VidCoreWebPlayer-v$env:VERSION.zip"
+          Compress-Archive -Path $nativeStage -DestinationPath $nativeZip -CompressionLevel Optimal
+          Compress-Archive -Path $webStage -DestinationPath $webZip -CompressionLevel Optimal
+
+          $hashLines = Get-ChildItem $dist -Filter '*.zip' | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          }
+          $hashLines | Set-Content (Join-Path $dist 'SHA256SUMS.txt') -Encoding ascii
+
+          @"
+          ## VidCore Steralizer Desktop v$env:VERSION
+
+          This release contains both maintained players in separate downloads.
+
+          ### Native Windows player
+          - C++23 modules, Win32, and WebView2
+          - Native popup, new-window, and navigation-hijack interception
+          - Database Pick is the default discovery mode
+          - Permanent Favorites list and dedicated Favorites tab
+          - Delete moved into the Edit window
+          - Stronger Wikidata and Wikipedia artwork repair
+
+          ### Web player
+          - Standalone browser version with the same metadata, discovery, lists, Continue Watching, recommendations, and related-title workflow
+
+          ### Assets
+          - `VidCoreNativePlayer-v$env:VERSION-windows-x64.zip`
+          - `VidCoreWebPlayer-v$env:VERSION.zip`
+          - `SHA256SUMS.txt`
+
+          The native player requires the Microsoft Edge WebView2 Runtime.
+          "@ | Set-Content (Join-Path $dist 'RELEASE_NOTES.md') -Encoding utf8
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete $env:TAG --repo $env:GITHUB_REPOSITORY --yes --cleanup-tag
+          }
+
+          gh release create $env:TAG `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:GITHUB_SHA `
+            --title "VidCore Steralizer Desktop $env:TAG" `
+            --notes-file dist/RELEASE_NOTES.md `
+            --latest `
+            dist/VidCoreNativePlayer-v$env:VERSION-windows-x64.zip `
+            dist/VidCoreWebPlayer-v$env:VERSION.zip `
+            dist/SHA256SUMS.txt
