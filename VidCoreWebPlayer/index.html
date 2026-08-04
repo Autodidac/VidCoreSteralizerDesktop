@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <title>VidCore Web Player</title>
+  <title>VidCore Native Player</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,17 +15,17 @@
       <div class="brand">
         <div class="brand-mark">▶</div>
         <div>
-          <strong>VidCore Web Player</strong>
+          <strong>VidCore Native Player</strong>
           <span>C++23 modules · full library · native popup shield</span>
         </div>
       </div>
 
       <div class="top-actions">
         <button id="shieldHelpButton" class="button subtle">Shield details</button>
-        <button id="dataFolderButton" class="button subtle">Storage info</button>
-        <div class="shield-pill" title="Browser popup guard is active for the application shell.">
+        <button id="dataFolderButton" class="button subtle">Data folder</button>
+        <div class="shield-pill" title="Native popup interception is active.">
           <span class="shield-dot"></span>
-          Guard active
+          Shield active
           <b id="blockedCount">0</b>
         </div>
       </div>
@@ -33,47 +33,6 @@
 
     <main class="workspace">
       <section class="main-column">
-        <section id="playerShell" class="player-shell panel">
-          <iframe
-              id="player"
-              title="Streaming player"
-              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-              allowfullscreen
-              referrerpolicy="strict-origin-when-cross-origin">
-          </iframe>
-
-          <div id="emptyPlayer" class="player-empty">
-            <div class="play-glyph">▶</div>
-            <strong>Ready at movie ID 1</strong>
-            <span>Press Play or use metadata discovery.</span>
-          </div>
-        </section>
-
-        <section class="transport panel">
-          <div class="transport-row">
-            <button id="stopButton" class="button danger">Stop</button>
-            <button id="copyUrlButton" class="button">Copy URL</button>
-            <button id="muteButton" class="button">Mute</button>
-            <button id="theaterModeButton" class="button">Theater</button>
-            <button id="fullscreenButton" class="button">Fullscreen</button>
-            <button id="devtoolsButton" class="button">DevTools</button>
-          </div>
-
-          <div class="zoom-row">
-            <span>UI zoom</span>
-            <button id="zoomOutButton" class="round-button">−</button>
-            <input
-                id="zoomSlider"
-                type="range"
-                min="50"
-                max="200"
-                step="10"
-                value="100">
-            <button id="zoomInButton" class="round-button">+</button>
-            <output id="zoomOutput">100%</output>
-          </div>
-        </section>
-
         <section class="source-panel panel">
           <label class="field provider-field">
             <span>Provider</span>
@@ -137,6 +96,47 @@
           <button id="randomButton" class="button">Random</button>
         </section>
 
+        <section id="playerShell" class="player-shell panel">
+          <iframe
+              id="player"
+              title="Streaming player"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin">
+          </iframe>
+
+          <div id="emptyPlayer" class="player-empty">
+            <div class="play-glyph">▶</div>
+            <strong>Ready at movie ID 1</strong>
+            <span>Press Play or use metadata discovery.</span>
+          </div>
+        </section>
+
+        <section class="transport panel">
+          <div class="transport-row">
+            <button id="stopButton" class="button danger">Stop</button>
+            <button id="copyUrlButton" class="button">Copy URL</button>
+            <button id="muteButton" class="button">Mute</button>
+            <button id="theaterModeButton" class="button">Theater</button>
+            <button id="fullscreenButton" class="button">Fullscreen</button>
+            <button id="devtoolsButton" class="button">DevTools</button>
+          </div>
+
+          <div class="zoom-row">
+            <span>UI zoom</span>
+            <button id="zoomOutButton" class="round-button">−</button>
+            <input
+                id="zoomSlider"
+                type="range"
+                min="50"
+                max="200"
+                step="10"
+                value="100">
+            <button id="zoomInButton" class="round-button">+</button>
+            <output id="zoomOutput">100%</output>
+          </div>
+        </section>
+
         <section class="current-card panel">
           <div id="currentPoster" class="current-poster fallback">?</div>
 
@@ -158,6 +158,9 @@
             <button id="imdbButton" class="button hidden">IMDb</button>
             <button id="tmdbButton" class="button hidden">TMDB</button>
             <button id="wikipediaButton" class="button hidden">Wikipedia</button>
+            <button id="fastflixButton" class="button hidden">FastFlix</button>
+            <button id="seeflixButton" class="button hidden">SeeFlix</button>
+            <button id="movies123Button" class="button hidden">123Movies</button>
           </div>
         </section>
 
@@ -236,7 +239,7 @@
         <section id="blockedPanel" class="side-panel hidden">
           <div class="blocked-summary">
             <span>
-              Attempts caught this run are shown below. Learned hosts persist under Local AppData.
+              Attempts caught this run are shown below. Learned hosts persist in the portable data folder beside the executable.
             </span>
             <button id="clearBlockedButton" class="button danger">Clear learned hosts</button>
           </div>
@@ -296,7 +299,7 @@
     <div class="dialog-body">
       <h3>Library storage</h3>
       <p>
-        Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
+        Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
       </p>
       <p>
         Exact playback position is unavailable because the provider frame is cross-origin. Continue Watching records played titles and manual completion state.
@@ -309,7 +312,7 @@
 
   <dialog id="shieldDialog">
     <div class="dialog-body">
-      <h3>Browser popup guard</h3>
+      <h3>Native popup shield</h3>
       <p>
         The C++ host cancels WebView2 new-window requests and top-level navigation hijacks. A document-created guard also blocks window.open, target-blank links, external click redirects, middle-click navigation, and external form submissions inside every frame.
       </p>

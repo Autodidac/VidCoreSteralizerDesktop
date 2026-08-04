@@ -151,7 +151,7 @@ button {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 410px;
+  grid-template-columns: minmax(0, 1fr) 440px;
   gap: 14px;
 }
 
@@ -161,19 +161,22 @@ button {
 
 .source-panel {
   display: grid;
-  grid-template-columns:
-      minmax(230px, 1fr)
-      104px
-      minmax(130px, 0.45fr)
-      auto
-      auto
-      auto
-      auto
-      128px
-      auto;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
   gap: 9px;
   margin-bottom: 14px;
   padding: 11px;
+}
+
+.source-panel .provider-field { grid-column: span 2; }
+.source-panel .mode-field { grid-column: span 1; }
+.source-panel .id-field { grid-column: span 2; }
+.source-panel .number-field { grid-column: span 1; }
+.source-panel .button { grid-column: span 1; min-width: 0; }
+.source-panel .random-mode {
+  grid-column: span 2;
+  align-self: end;
+  min-height: 42px;
 }
 
 .field {
@@ -298,17 +301,19 @@ textarea:focus {
 
 .current-card {
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr) auto;
+  grid-template-columns: 132px minmax(0, 1fr) minmax(210px, 238px);
+  align-items: start;
   gap: 16px;
-  min-height: 166px;
+  min-height: 214px;
   margin-bottom: 14px;
   padding: 14px;
 }
 
 .current-poster {
   display: grid;
-  width: 118px;
-  min-height: 138px;
+  width: 132px;
+  min-height: 198px;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   place-items: center;
   border: 1px solid var(--border);
@@ -324,7 +329,7 @@ textarea:focus {
 .current-poster img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .current-copy {
@@ -366,6 +371,8 @@ textarea:focus {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);
+  min-width: 0;
+  white-space: normal;
   font-size: 11px;
 }
 
@@ -374,14 +381,16 @@ textarea:focus {
 }
 
 .current-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
-  align-items: stretch;
-  flex-direction: column;
   gap: 7px;
+  width: 100%;
 }
 
 .current-actions .button {
-  min-width: 105px;
+  min-width: 0;
+  white-space: normal;
 }
 
 .player-shell {
@@ -609,13 +618,14 @@ textarea:focus {
 
 .media-card {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  min-height: 104px;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
 }
 
 .card-poster {
   display: grid;
-  min-height: 104px;
+  min-height: 132px;
+  aspect-ratio: 2 / 3;
   place-items: center;
   background:
       linear-gradient(145deg, rgba(124, 92, 255, 0.24), rgba(75, 167, 255, 0.08)),
@@ -628,7 +638,7 @@ textarea:focus {
 .card-poster img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .card-body {
@@ -665,8 +675,8 @@ textarea:focus {
 }
 
 .card-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-top: 9px;
 }
@@ -855,13 +865,24 @@ body.theater .topbar {
 }
 
 
-/* v0.2.2 provider controls */
-@media (min-width: 1181px) {
-  .source-panel {
-    grid-template-columns:
-        minmax(210px, 1fr)
-        96px
-        minmax(120px, 0.42fr)
-        auto auto auto auto auto auto 124px auto;
+
+/* v0.2.5 responsive provider and card formatting */
+@media (max-width: 1320px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) 390px; }
+  .source-panel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .source-panel .provider-field,
+  .source-panel .id-field,
+  .source-panel .random-mode { grid-column: span 2; }
+}
+
+@media (max-width: 1080px) {
+  .workspace { grid-template-columns: 1fr; }
+  .sidebar { position: static; min-height: auto; }
+  .side-panel { max-height: 560px; }
+  .current-card { grid-template-columns: 118px minmax(0, 1fr); }
+  .current-poster { width: 118px; min-height: 177px; }
+  .current-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

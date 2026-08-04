@@ -26,7 +26,7 @@ public:
 
     explicit WebViewHost(HWND window)
         : window_{window},
-          assets_index_{std::filesystem::current_path() / L"assets" / L"index.html"},
+          assets_index_{executable_directory() / L"assets" / L"index.html"},
           home_url_{uri::file_url(assets_index_)} {}
 
     WebViewHost(const WebViewHost&) = delete;
@@ -115,6 +115,21 @@ public:
     }
 
 private:
+    [[nodiscard]] static std::filesystem::path executable_directory() {
+        std::wstring module_path(32768, L'\0');
+        const auto length = GetModuleFileNameW(
+            nullptr,
+
+            module_path.data(),
+            static_cast<DWORD>(module_path.size())
+        );
+        if (length > 0 && length < module_path.size()) {
+            module_path.resize(length);
+            return std::filesystem::path{module_path}.parent_path();
+        }
+        return std::filesystem::current_path();
+    }
+
     static constexpr std::wstring_view popup_guard_script = LR"JS(
 (() => {
     if (globalThis.__vidcorePopupGuardInstalled) {
@@ -347,7 +362,10 @@ private:
             host_matches(host, L"imdb.com") ||
             host_matches(host, L"themoviedb.org") ||
             host_matches(host, L"wikipedia.org") ||
-            host_matches(host, L"wikidata.org");
+            host_matches(host, L"wikidata.org") ||
+            host_matches(host, L"fastflix.to") ||
+            host_matches(host, L"seeflix.to") ||
+            host_matches(host, L"123moviesfree.net");
     }
 
     void handle_message(const std::wstring& message) {

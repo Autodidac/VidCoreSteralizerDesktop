@@ -28,21 +28,22 @@ public:
     }
 
     [[nodiscard]] static std::filesystem::path resolve_directory() {
-        PWSTR raw_path = nullptr;
-        const auto result = SHGetKnownFolderPath(
-            FOLDERID_LocalAppData,
-            KF_FLAG_CREATE,
+        std::wstring module_path(32768, L'\0');
+        const auto length = GetModuleFileNameW(
             nullptr,
-            &raw_path
+            module_path.data(),
+            static_cast<DWORD>(module_path.size())
         );
 
-        if (FAILED(result) || raw_path == nullptr) {
-            return std::filesystem::temp_directory_path() / L"VidCoreNativePlayer";
+        std::filesystem::path executable_directory;
+        if (length > 0 && length < module_path.size()) {
+            module_path.resize(length);
+            executable_directory = std::filesystem::path{module_path}.parent_path();
+        } else {
+            executable_directory = std::filesystem::current_path();
         }
 
-        std::filesystem::path directory{raw_path};
-        CoTaskMemFree(raw_path);
-        return directory / L"VidCoreNativePlayer";
+        return executable_directory / L"data";
     }
 
     [[nodiscard]] const std::filesystem::path& directory() const noexcept {

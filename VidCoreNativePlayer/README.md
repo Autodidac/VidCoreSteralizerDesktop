@@ -127,3 +127,10 @@ Use the player only with sources and media you are authorized to access.
 - New JSON backups use compact provider-indexed backups and still import the version 1 full-URL format.
 
 - v0.2.4 places playback/resolve controls below transport and includes a non-destructive built-in starter library.
+
+
+## Portable data and image cache
+
+The Windows build keeps its complete WebView2 profile in `data/` beside `VidCoreNativePlayer.exe`. That folder contains browser cache, resolved remote artwork cache, IndexedDB, localStorage, popup-block history, and other runtime state. Moving the application folder moves its data with it; the player no longer creates its own application folder under Local AppData.
+
+Artwork resolution rejects diagrams, unrelated subject images, actor/director portraits, cast photos, and red-carpet images. It prefers film-poster, logo, and film-still properties tied to the exact Wikidata title, then uses strict Wikipedia and Wikimedia Commons fallbacks.

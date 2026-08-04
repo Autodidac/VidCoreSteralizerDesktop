@@ -36,6 +36,9 @@
     imdbButton: $("#imdbButton"),
     tmdbButton: $("#tmdbButton"),
     wikipediaButton: $("#wikipediaButton"),
+    fastflixButton: $("#fastflixButton"),
+    seeflixButton: $("#seeflixButton"),
+    movies123Button: $("#movies123Button"),
     playerShell: $("#playerShell"),
     player: $("#player"),
     emptyPlayer: $("#emptyPlayer"),
@@ -286,7 +289,9 @@
 
     setPoster(
       elements.currentPoster,
-      metadata.image,
+      VidCoreMetadata.isLikelyBadArtwork(entry, metadata, metadata.image)
+        ? ""
+        : metadata.image,
       entry.mode === "movie" ? "M" : "TV"
     );
 
@@ -323,6 +328,16 @@
     elements.imdbButton.dataset.url = imdbUrl;
     elements.tmdbButton.dataset.url = tmdbUrl;
     elements.wikipediaButton.dataset.url = wikipediaUrl;
+
+    const catalogUrls = VidCoreMetadata.externalCatalogUrls(entry, metadata);
+    for (const [button, url] of [
+      [elements.fastflixButton, catalogUrls.fastflix],
+      [elements.seeflixButton, catalogUrls.seeflix],
+      [elements.movies123Button, catalogUrls.movies123]
+    ]) {
+      button.classList.toggle("hidden", !url);
+      button.dataset.url = url;
+    }
   }
 
   async function persistMetadata(entry, metadata) {
@@ -566,7 +581,9 @@
     poster.className = "card-poster";
     setPoster(
       poster,
-      entry.image,
+      VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)
+        ? ""
+        : entry.image,
       entry.mode === "movie" ? "M" : "TV"
     );
 
@@ -631,6 +648,15 @@
         actions.append(
           createButton("TMDB", () => openExternal(tmdbUrl))
         );
+      }
+
+      const catalogUrls = VidCoreMetadata.externalCatalogUrls(entry, entry);
+      for (const [label, url] of [
+        ["FastFlix", catalogUrls.fastflix],
+        ["SeeFlix", catalogUrls.seeflix],
+        ["123Movies", catalogUrls.movies123]
+      ]) {
+        if (url) actions.append(createButton(label, () => openExternal(url)));
       }
     }
 
@@ -1560,11 +1586,47 @@
     };
   }
 
+
+  async function sanitizeStoredArtwork() {
+    if (!state.storageReady) return { favorites: 0, history: 0, queue: 0 };
+
+    let favorites = 0;
+    let history = 0;
+    for (const store of [
+      VidCoreStorage.STORES.favorites,
+      VidCoreStorage.STORES.history
+    ]) {
+      for (const entry of await VidCoreStorage.getAll(store)) {
+        if (!entry.image || !VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)) {
+          continue;
+        }
+        const cleaned = { ...entry, image: "", artworkRejectedAt: new Date().toISOString() };
+        await VidCoreStorage.put(store, cleaned);
+        if (store === VidCoreStorage.STORES.favorites) favorites += 1;
+        else history += 1;
+      }
+    }
+
+    const queue = VidCoreScanner.readQueue();
+    const cleanedQueue = queue.filter(entry =>
+      entry.image && !VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)
+    );
+    if (cleanedQueue.length !== queue.length) {
+      localStorage.setItem(
+        "vidcoreLibrary.discoveryQueue",
+        JSON.stringify(cleanedQueue.slice(0, 40))
+      );
+    }
+
+    return { favorites, history, queue: queue.length - cleanedQueue.length };
+  }
+
   async function initializeStorage() {
     try {
       await VidCoreStorage.initialize();
       state.storageReady = true;
       const migration = await migrateLegacyData();
+      const artworkCleanup = await sanitizeStoredArtwork();
       elements.storageMode.textContent =
         VidCoreStorage.mode === "indexeddb"
           ? "IndexedDB storage active"
@@ -1572,11 +1634,14 @@
 
       await renderAllLibraryViews();
       const migrated = migration.favorites + migration.history;
+      const rejectedArtwork = artworkCleanup.favorites + artworkCleanup.history + artworkCleanup.queue;
       setStatus(
         "Library ready",
-        migrated
-          ? `${elements.storageMode.textContent}; migrated ${migrated} older entr${migrated === 1 ? "y" : "ies"}.`
-          : elements.storageMode.textContent,
+        [
+          elements.storageMode.textContent,
+          migrated ? `migrated ${migrated} older entr${migrated === 1 ? "y" : "ies"}` : "",
+          rejectedArtwork ? `removed ${rejectedArtwork} mismatched artwork image${rejectedArtwork === 1 ? "" : "s"}` : ""
+        ].filter(Boolean).join("; "),
         "ok"
       );
     } catch (error) {
@@ -1661,6 +1726,13 @@
       "click",
       () => openExternal(elements.wikipediaButton.dataset.url)
     );
+    for (const button of [
+      elements.fastflixButton,
+      elements.seeflixButton,
+      elements.movies123Button
+    ]) {
+      button.addEventListener("click", () => openExternal(button.dataset.url));
+    }
 
     elements.stopButton.addEventListener("click", stopPlayer);
     elements.copyUrlButton.addEventListener("click", copyPlayerUrl);

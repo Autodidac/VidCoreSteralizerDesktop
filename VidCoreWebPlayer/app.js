@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const SETTINGS_PREFIX = "vidcoreWeb.settings.";
+  const SETTINGS_PREFIX = "vidcoreNative.settings.";
   const RESERVED_LISTS = new Set([
     "all",
     "favorites",
@@ -36,6 +36,9 @@
     imdbButton: $("#imdbButton"),
     tmdbButton: $("#tmdbButton"),
     wikipediaButton: $("#wikipediaButton"),
+    fastflixButton: $("#fastflixButton"),
+    seeflixButton: $("#seeflixButton"),
+    movies123Button: $("#movies123Button"),
     playerShell: $("#playerShell"),
     player: $("#player"),
     emptyPlayer: $("#emptyPlayer"),
@@ -111,61 +114,7 @@
   };
 
   function postHost(message) {
-    const text = String(message);
-    if (globalThis.chrome?.webview) {
-      globalThis.chrome.webview.postMessage(text);
-      return;
-    }
-
-    const separator = text.indexOf("|");
-    const command = separator < 0 ? text : text.slice(0, separator);
-    const payload = separator < 0 ? "" : text.slice(separator + 1);
-
-    if (command === "open-external") {
-      const anchor = document.createElement("a");
-      anchor.href = payload;
-      anchor.target = "_blank";
-      anchor.rel = "noopener noreferrer";
-      anchor.click();
-      return;
-    }
-
-    if (command === "zoom") {
-      const factor = Math.max(0.5, Math.min(2, Number(payload) || 1));
-      document.documentElement.style.zoom = String(factor);
-      return;
-    }
-
-    if (command === "reload-shell") {
-      location.reload();
-      return;
-    }
-
-    if (command === "clear-blocklist") {
-      state.blocked = [];
-      renderBlocked();
-      elements.blockedCount.textContent = "0";
-      setStatus("Blocked list cleared", "The browser session list is empty.");
-      return;
-    }
-
-    if (command === "open-data-folder") {
-      elements.storageDialog.showModal();
-      return;
-    }
-
-    if (command === "mute") {
-      setStatus(
-        "Browser limitation",
-        "Cross-origin provider audio cannot be muted by the outer web page. Use the provider control or browser tab mute.",
-        "warn"
-      );
-      return;
-    }
-
-    if (command === "devtools") {
-      setStatus("Open browser DevTools", "Press F12 or Ctrl+Shift+I.");
-    }
+    globalThis.chrome?.webview?.postMessage(String(message));
   }
 
   function setStatus(title, text, type = "") {
@@ -340,7 +289,9 @@
 
     setPoster(
       elements.currentPoster,
-      metadata.image,
+      VidCoreMetadata.isLikelyBadArtwork(entry, metadata, metadata.image)
+        ? ""
+        : metadata.image,
       entry.mode === "movie" ? "M" : "TV"
     );
 
@@ -377,6 +328,16 @@
     elements.imdbButton.dataset.url = imdbUrl;
     elements.tmdbButton.dataset.url = tmdbUrl;
     elements.wikipediaButton.dataset.url = wikipediaUrl;
+
+    const catalogUrls = VidCoreMetadata.externalCatalogUrls(entry, metadata);
+    for (const [button, url] of [
+      [elements.fastflixButton, catalogUrls.fastflix],
+      [elements.seeflixButton, catalogUrls.seeflix],
+      [elements.movies123Button, catalogUrls.movies123]
+    ]) {
+      button.classList.toggle("hidden", !url);
+      button.dataset.url = url;
+    }
   }
 
   async function persistMetadata(entry, metadata) {
@@ -620,7 +581,9 @@
     poster.className = "card-poster";
     setPoster(
       poster,
-      entry.image,
+      VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)
+        ? ""
+        : entry.image,
       entry.mode === "movie" ? "M" : "TV"
     );
 
@@ -685,6 +648,15 @@
         actions.append(
           createButton("TMDB", () => openExternal(tmdbUrl))
         );
+      }
+
+      const catalogUrls = VidCoreMetadata.externalCatalogUrls(entry, entry);
+      for (const [label, url] of [
+        ["FastFlix", catalogUrls.fastflix],
+        ["SeeFlix", catalogUrls.seeflix],
+        ["123Movies", catalogUrls.movies123]
+      ]) {
+        if (url) actions.append(createButton(label, () => openExternal(url)));
       }
     }
 
@@ -1614,11 +1586,47 @@
     };
   }
 
+
+  async function sanitizeStoredArtwork() {
+    if (!state.storageReady) return { favorites: 0, history: 0, queue: 0 };
+
+    let favorites = 0;
+    let history = 0;
+    for (const store of [
+      VidCoreStorage.STORES.favorites,
+      VidCoreStorage.STORES.history
+    ]) {
+      for (const entry of await VidCoreStorage.getAll(store)) {
+        if (!entry.image || !VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)) {
+          continue;
+        }
+        const cleaned = { ...entry, image: "", artworkRejectedAt: new Date().toISOString() };
+        await VidCoreStorage.put(store, cleaned);
+        if (store === VidCoreStorage.STORES.favorites) favorites += 1;
+        else history += 1;
+      }
+    }
+
+    const queue = VidCoreScanner.readQueue();
+    const cleanedQueue = queue.filter(entry =>
+      entry.image && !VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)
+    );
+    if (cleanedQueue.length !== queue.length) {
+      localStorage.setItem(
+        "vidcoreLibrary.discoveryQueue",
+        JSON.stringify(cleanedQueue.slice(0, 40))
+      );
+    }
+
+    return { favorites, history, queue: queue.length - cleanedQueue.length };
+  }
+
   async function initializeStorage() {
     try {
       await VidCoreStorage.initialize();
       state.storageReady = true;
       const migration = await migrateLegacyData();
+      const artworkCleanup = await sanitizeStoredArtwork();
       elements.storageMode.textContent =
         VidCoreStorage.mode === "indexeddb"
           ? "IndexedDB storage active"
@@ -1626,11 +1634,14 @@
 
       await renderAllLibraryViews();
       const migrated = migration.favorites + migration.history;
+      const rejectedArtwork = artworkCleanup.favorites + artworkCleanup.history + artworkCleanup.queue;
       setStatus(
         "Library ready",
-        migrated
-          ? `${elements.storageMode.textContent}; migrated ${migrated} older entr${migrated === 1 ? "y" : "ies"}.`
-          : elements.storageMode.textContent,
+        [
+          elements.storageMode.textContent,
+          migrated ? `migrated ${migrated} older entr${migrated === 1 ? "y" : "ies"}` : "",
+          rejectedArtwork ? `removed ${rejectedArtwork} mismatched artwork image${rejectedArtwork === 1 ? "" : "s"}` : ""
+        ].filter(Boolean).join("; "),
         "ok"
       );
     } catch (error) {
@@ -1715,6 +1726,13 @@
       "click",
       () => openExternal(elements.wikipediaButton.dataset.url)
     );
+    for (const button of [
+      elements.fastflixButton,
+      elements.seeflixButton,
+      elements.movies123Button
+    ]) {
+      button.addEventListener("click", () => openExternal(button.dataset.url));
+    }
 
     elements.stopButton.addEventListener("click", stopPlayer);
     elements.copyUrlButton.addEventListener("click", copyPlayerUrl);

@@ -4,6 +4,7 @@
   const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
   const WIKIDATA_API = "https://www.wikidata.org/w/api.php";
   const WIKIPEDIA_ENDPOINT = "https://en.wikipedia.org/w/api.php";
+  const COMMONS_ENDPOINT = "https://commons.wikimedia.org/w/api.php";
   const WIKIPEDIA_SEARCH_LIMIT = 8;
   const RELATED_REPAIR_LIMIT = 18;
 
@@ -98,6 +99,7 @@
 
   function needsRepair(entry) {
     return !entry?.image ||
+      isLikelyBadArtwork(entry, entry, entry?.image) ||
       !entry?.description ||
       isGenericTitle(entry, entry?.title);
   }
@@ -144,12 +146,14 @@
         ? `?item wdt:P4947 ${sparqlLiteral(entry.id)}.`
         : `?item wdt:P4983 ${sparqlLiteral(entry.id)}.`;
 
-    return `SELECT ?item ?itemLabel ?itemDescription ?date ?image ?imdb ?movieTmdb ?tvTmdb ?article
+    return `SELECT ?item ?itemLabel ?itemDescription ?date ?poster ?logo ?image ?imdb ?movieTmdb ?tvTmdb ?article
       (GROUP_CONCAT(DISTINCT ?genreLabel; separator="|") AS ?genres)
       (GROUP_CONCAT(DISTINCT STR(?genre); separator="|") AS ?genreUris)
       WHERE {
         ${identifierPattern}
         OPTIONAL { ?item wdt:P577 ?date. }
+        OPTIONAL { ?item wdt:P3383 ?poster. }
+        OPTIONAL { ?item wdt:P154 ?logo. }
         OPTIONAL { ?item wdt:P18 ?image. }
         OPTIONAL { ?item wdt:P345 ?imdb. }
         OPTIONAL { ?item wdt:P4947 ?movieTmdb. }
@@ -167,7 +171,7 @@
           bd:serviceParam wikibase:language "en".
         }
       }
-      GROUP BY ?item ?itemLabel ?itemDescription ?date ?image ?imdb
+      GROUP BY ?item ?itemLabel ?itemDescription ?date ?poster ?logo ?image ?imdb
                ?movieTmdb ?tvTmdb ?article
       LIMIT 1`;
   }
@@ -195,7 +199,15 @@
       title: bindingValue(binding, "itemLabel") || fallbackTitle(entry),
       description: bindingValue(binding, "itemDescription"),
       year: bindingValue(binding, "date").slice(0, 4),
-      image: bindingValue(binding, "image").replace(/^http:/, "https:"),
+      image: selectArtworkImage(entry, {
+        title: bindingValue(binding, "itemLabel") || fallbackTitle(entry),
+        year: bindingValue(binding, "date").slice(0, 4)
+      }, [
+        { kind: "poster", value: bindingValue(binding, "poster") },
+
+        { kind: "logo", value: bindingValue(binding, "logo") },
+        { kind: "image", value: bindingValue(binding, "image") }
+      ]),
       imdb: bindingValue(binding, "imdb"),
       tmdb: entry.mode === "movie"
         ? bindingValue(binding, "movieTmdb")
@@ -255,6 +267,8 @@
   function mergeWikidataEntity(entry, metadata, entity) {
     if (!entity || entity.missing !== undefined) return metadata;
 
+    const posterName = entity?.claims?.P3383?.[0]?.mainsnak?.datavalue?.value || "";
+    const logoName = entity?.claims?.P154?.[0]?.mainsnak?.datavalue?.value || "";
     const imageName = entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value || "";
     const articleName = entity?.sitelinks?.enwiki?.title || "";
     const article = articleName
@@ -270,7 +284,17 @@
         metadata.description ||
         entity?.descriptions?.en?.value ||
         "",
-      image: metadata.image || commonsImageUrl(imageName),
+      image: isLikelyBadArtwork(entry, metadata, metadata.image)
+        ? selectArtworkImage(entry, metadata, [
+            { kind: "poster", value: commonsImageUrl(posterName) },
+            { kind: "logo", value: commonsImageUrl(logoName) },
+            { kind: "image", value: commonsImageUrl(imageName) }
+          ])
+        : metadata.image || selectArtworkImage(entry, metadata, [
+            { kind: "poster", value: commonsImageUrl(posterName) },
+            { kind: "logo", value: commonsImageUrl(logoName) },
+            { kind: "image", value: commonsImageUrl(imageName) }
+          ]),
       article: metadata.article || article,
       wikidata:
         metadata.wikidata ||
@@ -291,7 +315,8 @@
         page.original?.source ||
         "",
       wikipedia: page.fullurl || fallbackUrl,
-      categories: (page.categories || []).map(category => category.title || "")
+      categories: (page.categories || []).map(category => category.title || ""),
+      imageName: page.pageimage || ""
     };
   }
 
@@ -327,6 +352,102 @@
       .trim();
   }
 
+
+  function artworkText(value) {
+    try {
+      const url = new URL(String(value || ""));
+      return normalizeSearchText(decodeURIComponent(url.pathname));
+    } catch {
+      return normalizeSearchText(value);
+    }
+  }
+
+  function meaningfulTitleTokens(value) {
+    const ignored = new Set([
+      "the", "and", "for", "from", "with", "into", "part", "episode",
+      "movie", "film", "television", "series", "season"
+    ]);
+    return normalizeSearchText(value)
+      .split(" ")
+      .filter(token => token.length >= 3 && !ignored.has(token));
+  }
+
+  function titleSimilarity(left, right) {
+    const expected = meaningfulTitleTokens(left);
+    const candidate = new Set(meaningfulTitleTokens(right));
+    if (expected.length === 0) return 0;
+    return expected.filter(token => candidate.has(token)).length / expected.length;
+  }
+
+  function isLikelyBadArtwork(entry, metadata, image, sourceKind = "image") {
+    if (!image) return false;
+    if (sourceKind === "poster" || sourceKind === "logo") return false;
+
+    const imageText = artworkText(image);
+    if (!imageText) return true;
+
+    if (/\b(distribution|diagram|chart|graph|equation|histogram|map|flag|coat of arms|politics|politician|pdf|document|building|headshot|portrait|red carpet|premiere|festival|interview|award ceremony|cast photo|cast group|actor|actress|director|producer|model|football|soccer)\b/.test(imageText)) {
+      return true;
+    }
+
+    if (/\b(poster|key art|cover|title card|logo|movie still|film still|screenshot|screen shot|scene|promotional|publicity still)\b/.test(imageText)) {
+      return false;
+    }
+
+    const title = metadata?.title || entry?.title || "";
+    const overlap = titleSimilarity(title, imageText);
+    return overlap < 0.5;
+  }
+
+  function selectArtworkImage(entry, metadata, candidates) {
+    for (const candidate of candidates) {
+      const value = String(candidate?.value || "").replace(/^http:/, "https:");
+      if (!value) continue;
+      if (!isLikelyBadArtwork(entry, metadata, value, candidate.kind)) {
+        return value;
+      }
+    }
+    return "";
+  }
+
+  function isLikelyMediaArticle(entry, metadata, page) {
+    const pageTitle = page?.title || "";
+    const categories = normalizeSearchText(
+      (page?.categories || []).map(category => category.title || category).join(" ")
+    );
+    const extract = normalizeSearchText(page?.extract || "");
+    const combined = `${normalizeSearchText(pageTitle)} ${categories} ${extract}`;
+    const expectedTitle = metadata?.title || "";
+    const similarity = titleSimilarity(expectedTitle, pageTitle);
+    const mediaTerms = entry.mode === "movie"
+      ? /\b(film|films|movie|cinema)\b/
+      : /\b(television|tv series|television series|miniseries)\b/;
+    const personTerms = /\b(living people|births|actors|actresses|film directors|television directors|models|people from|american male|american female|british male|british female)\b/;
+
+    if (personTerms.test(categories)) return false;
+    if (!mediaTerms.test(combined)) return false;
+    return similarity >= 0.6 || normalizeSearchText(pageTitle) === normalizeSearchText(expectedTitle);
+  }
+
+  function slugifyTitle(value) {
+    return normalizeSearchText(value).replaceAll(" ", "-");
+  }
+
+  function externalCatalogUrls(entry, metadata) {
+    const title = metadata?.title || entry?.title || "";
+    if (!title || isGenericTitle(entry, title)) {
+      return { fastflix: "", seeflix: "", movies123: "" };
+    }
+
+    const slug = slugifyTitle(title);
+    const fastflixType = entry.mode === "tv" ? "tvshows" : "movies";
+    return {
+      fastflix: `https://fastflix.to/${fastflixType}/${slug}/`,
+      seeflix: `https://ww4.seeflix.to/${slug}/`,
+      movies123: `https://ww8.123moviesfree.net/search/${slug}/`
+    };
+  }
+
   function wikipediaSearchQueries(entry, metadata) {
     const queries = [];
     const add = value => {
@@ -355,6 +476,10 @@
   }
 
   function scoreWikipediaCandidate(entry, metadata, page) {
+    if (!isLikelyMediaArticle(entry, metadata, page)) {
+      return -180;
+    }
+
     const title = normalizeSearchText(page?.title);
     const expectedTitle = normalizeSearchText(metadata?.title);
     const extract = normalizeSearchText(page?.extract);
@@ -364,22 +489,20 @@
     const combined = `${title} ${extract} ${categories}`;
     const year = String(metadata?.year || "").slice(0, 4);
     const imdb = String(metadata?.imdb || (/^tt\d+$/i.test(entry.id) ? entry.id : "")).toLowerCase();
-    const typeTerms = entry.mode === "movie"
-      ? ["film", "films", "movie", "cinema"]
-      : ["television", "tv series", "television series", "miniseries"];
+    const image = page?.thumbnail?.source || page?.original?.source || "";
+    const imageName = page?.pageimage || "";
 
     let score = 0;
+    if (image && !isLikelyBadArtwork(entry, metadata, imageName || image)) score += 42;
+    if (expectedTitle && title === expectedTitle) score += 90;
+    else if (expectedTitle && title.includes(expectedTitle)) score += 52;
+    else if (expectedTitle && expectedTitle.includes(title)) score += 32;
 
-    if (page?.thumbnail?.source || page?.original?.source) score += 28;
-    if (expectedTitle && title === expectedTitle) score += 70;
-    else if (expectedTitle && title.includes(expectedTitle)) score += 42;
-    else if (expectedTitle && expectedTitle.includes(title)) score += 28;
-
-    if (year && combined.includes(year)) score += 18;
-    if (imdb && combined.includes(imdb)) score += 70;
-    if (typeTerms.some(term => combined.includes(term))) score += 18;
-    if (/disambiguation|list of|episode list/.test(combined)) score -= 90;
-    if (/soundtrack|novel|video game|album/.test(title) && entry.mode === "movie") score -= 24;
+    if (year && combined.includes(year)) score += 22;
+    if (imdb && combined.includes(imdb)) score += 80;
+    if (/disambiguation|list of|episode list/.test(combined)) score -= 120;
+    if (/soundtrack|novel|video game|album/.test(title) && entry.mode === "movie") score -= 50;
+    if (image && isLikelyBadArtwork(entry, metadata, imageName || image)) score -= 100;
 
     return score;
   }
@@ -421,7 +544,7 @@
       }
     }
 
-    const minimumScore = isGenericTitle(entry, metadata.title) ? 70 : 45;
+    const minimumScore = isGenericTitle(entry, metadata.title) ? 105 : 75;
     return bestScore >= minimumScore ? best : null;
   }
 
@@ -434,13 +557,68 @@
         ? wikipedia.title || metadata.title
         : metadata.title,
       description: metadata.description || wikipedia.description || "",
-      image: metadata.image || wikipedia.image || "",
+      image: isLikelyBadArtwork(entry, metadata, metadata.image)
+        ? selectArtworkImage(entry, metadata, [
+            { kind: "image", value: wikipedia.imageName || wikipedia.image }
+          ]) || (!isLikelyBadArtwork(entry, metadata, wikipedia.image) ? wikipedia.image : "")
+        : metadata.image || (!isLikelyBadArtwork(entry, metadata, wikipedia.imageName || wikipedia.image)
+          ? wikipedia.image
+          : ""),
       wikipedia: wikipedia.wikipedia || metadata.article || "",
       resolutionStatus: metadata.wikidata || wikipedia.title
         ? "resolved"
         : metadata.resolutionStatus,
       resolvedAt: new Date().toISOString()
     };
+  }
+
+
+  async function searchCommonsArtwork(entry, metadata) {
+    const title = isGenericTitle(entry, metadata.title) ? "" : metadata.title;
+    if (!title) return "";
+
+    const queries = [
+      `${title} film poster`,
+      `${title} television poster`,
+      `${title} title logo`,
+      `${title} film still`
+    ];
+    let best = "";
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const query of queries) {
+      const url = new URL(COMMONS_ENDPOINT);
+      url.searchParams.set("action", "query");
+      url.searchParams.set("generator", "search");
+      url.searchParams.set("gsrsearch", query);
+      url.searchParams.set("gsrnamespace", "6");
+      url.searchParams.set("gsrlimit", "8");
+      url.searchParams.set("prop", "imageinfo");
+      url.searchParams.set("iiprop", "url");
+      url.searchParams.set("iiurlwidth", "1000");
+      url.searchParams.set("format", "json");
+      url.searchParams.set("origin", "*");
+
+      const payload = await fetchJson(url);
+      for (const page of Object.values(payload?.query?.pages || {})) {
+        const image = page?.imageinfo?.[0]?.thumburl || page?.imageinfo?.[0]?.url || "";
+        const filename = page?.title || image;
+        if (!image || isLikelyBadArtwork(entry, metadata, filename)) continue;
+
+        let score = Math.round(titleSimilarity(title, filename) * 100);
+        const normalized = normalizeSearchText(filename);
+        if (/\bposter|key art|cover\b/.test(normalized)) score += 70;
+        if (/\blogo|title card\b/.test(normalized)) score += 45;
+        if (/\bstill|scene|screenshot\b/.test(normalized)) score += 25;
+        if (score > bestScore) {
+          bestScore = score;
+          best = image;
+        }
+      }
+      if (bestScore >= 120) break;
+    }
+
+    return bestScore >= 75 ? best : "";
   }
 
   async function enrichMetadata(entry, metadata) {
@@ -480,6 +658,21 @@
       } catch {
         // Preserve the strongest metadata already found.
       }
+    }
+
+    if (!enriched.image || isLikelyBadArtwork(entry, enriched, enriched.image)) {
+      try {
+        enriched = {
+          ...enriched,
+          image: await searchCommonsArtwork(entry, enriched)
+        };
+      } catch {
+        enriched = { ...enriched, image: "" };
+      }
+    }
+
+    if (isLikelyBadArtwork(entry, enriched, enriched.image)) {
+      enriched = { ...enriched, image: "" };
     }
 
     return enriched;
@@ -589,7 +782,14 @@
         ),
         description: bindingValue(binding, "itemDescription"),
         year: bindingValue(binding, "date").slice(0, 4),
-        image: bindingValue(binding, "image").replace(/^http:/, "https:"),
+        image: selectArtworkImage({ mode: entry.mode, id }, {
+          title: bindingValue(binding, "itemLabel") || (
+
+            entry.mode === "movie" ? `Movie ${id}` : `TV ${id}`
+          )
+        }, [
+          { kind: "image", value: bindingValue(binding, "image") }
+        ]),
         imdb,
         tmdb,
         wikidata: bindingValue(binding, "item"),
@@ -645,6 +845,9 @@
     wikipediaSearchQueries,
     scoreWikipediaCandidate,
     mergeWikidataEntity,
-    mergeWikipedia
+    mergeWikipedia,
+    isLikelyBadArtwork,
+    selectArtworkImage,
+    externalCatalogUrls
   });
 })();

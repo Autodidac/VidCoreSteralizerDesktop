@@ -11,8 +11,8 @@ const repositoryRoot = path.resolve(nativeRoot, "..");
 
 for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"]) {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  assert.ok(html.indexOf('class="transport panel"') < html.indexOf('class="source-panel panel"'));
-  assert.ok(html.indexOf('class="source-panel panel"') < html.indexOf('class="current-card panel"'));
+  assert.ok(html.indexOf('class="source-panel panel"') < html.indexOf('id="playerShell"'));
+  assert.ok(html.indexOf('class="transport panel"') < html.indexOf('class="current-card panel"'));
   assert.ok(html.indexOf('src="builtin-library.js"') < html.indexOf('src="storage.js"'));
 
   const context = {

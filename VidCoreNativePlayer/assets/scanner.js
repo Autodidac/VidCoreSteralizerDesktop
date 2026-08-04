@@ -19,7 +19,12 @@
   function readQueue() {
     try {
       const parsed = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed)
+        ? parsed.filter(entry =>
+            entry?.image &&
+            !VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)
+          )
+        : [];
     } catch {
       return [];
     }
@@ -33,7 +38,7 @@
   }
 
   function addResolvedImage(entry) {
-    if (!entry?.id || !entry?.image) {
+    if (!entry?.id || !entry?.image || VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)) {
       return readQueue();
     }
 

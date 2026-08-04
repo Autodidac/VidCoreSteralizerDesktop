@@ -26,7 +26,10 @@ for (const id of [
   "blockedCards",
   "deleteDialogButton",
   "exportButton",
-  "importButton"
+  "importButton",
+  "fastflixButton",
+  "seeflixButton",
+  "movies123Button"
 ]) {
   assert.match(html, new RegExp(`id="${id}"`));
 }
@@ -53,10 +56,20 @@ assert.match(metadata, /wbgetentities/);
 assert.match(metadata, /generator", "search"/);
 assert.match(metadata, /scoreWikipediaCandidate/);
 assert.match(metadata, /RELATED_REPAIR_LIMIT/);
+assert.match(metadata, /isLikelyBadArtwork/);
+assert.match(metadata, /searchCommonsArtwork/);
+assert.match(metadata, /externalCatalogUrls/);
+assert.ok(
+  html.indexOf('class="source-panel panel"') <
+  html.indexOf('id="playerShell"')
+);
 
 assert.match(webview, /NewWindowRequested/);
 assert.match(webview, /AddScriptToExecuteOnDocumentCreated/);
 assert.match(webview, /open-external/);
 assert.match(webview, /external-denied/);
+assert.match(webview, /fastflix\.to/);
+assert.match(webview, /123moviesfree\.net/);
+assert.match(webview, /executable_directory/);
 
 console.log("Static feature, metadata-repair, and popup-shield checks passed.");

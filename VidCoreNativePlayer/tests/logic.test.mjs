@@ -120,6 +120,30 @@ const weakCandidateScore = metadata.scoreWikipediaCandidate(
 );
 assert.ok(strongCandidateScore > weakCandidateScore);
 
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "Normal" },
+    { title: "Normal" },
+    "https://upload.wikimedia.org/normal-distribution-diagram.svg"
+  ),
+  true
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "Example Film" },
+    { title: "Example Film" },
+    "https://upload.wikimedia.org/example-film-poster.jpg"
+  ),
+  false
+);
+const catalogs = metadata.externalCatalogUrls(
+  { mode: "tv", id: "1" },
+  { title: "Mating Season" }
+);
+assert.match(catalogs.fastflix, /fastflix\.to\/tvshows\/mating-season/);
+assert.match(catalogs.seeflix, /seeflix\.to\/mating-season/);
+assert.match(catalogs.movies123, /123moviesfree\.net\/search\/mating-season/);
+
 const entityMerge = metadata.mergeWikidataEntity(
   { mode: "movie", id: "1198994" },
   {
