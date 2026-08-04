@@ -27,14 +27,20 @@ jobs:
       - name: Apply and commit staged source update
         shell: pwsh
         run: |
-          if (Test-Path '.github/scripts/apply-v0.2.4.py') {
-            python .github/scripts/apply-v0.2.4.py
+          $bundle = '.github/scripts/apply-v0.2.5.py.gz.b64'
+          if (Test-Path $bundle) {
+            python -c "import base64,gzip,pathlib; p=pathlib.Path(r'$bundle'); pathlib.Path(r'.github/scripts/apply-v0.2.5.py').write_bytes(gzip.decompress(base64.b64decode(p.read_text())))"
             if ($LASTEXITCODE -ne 0) {
-              throw "The v0.2.4 source update failed with exit code $LASTEXITCODE."
+              throw "The v0.2.5 source updater could not be unpacked."
             }
 
-            Remove-Item '.github/scripts/apply-v0.2.4.py' -Force -ErrorAction SilentlyContinue
-            Remove-Item '.github/scripts/seed-v0.2.4.part*' -Force -ErrorAction SilentlyContinue
+            python .github/scripts/apply-v0.2.5.py
+            if ($LASTEXITCODE -ne 0) {
+              throw "The v0.2.5 source update failed with exit code $LASTEXITCODE."
+            }
+
+            Remove-Item '.github/scripts/apply-v0.2.5.py' -Force -ErrorAction SilentlyContinue
+            Remove-Item $bundle -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts' -Force -ErrorAction SilentlyContinue
 
             git config user.name 'github-actions[bot]'
@@ -42,7 +48,7 @@ jobs:
             git add -A
             git diff --cached --quiet
             if ($LASTEXITCODE -ne 0) {
-              git commit -m 'Move playback controls and add built-in library'
+              git commit -m 'Improve artwork resolution and portable storage'
               if ($LASTEXITCODE -ne 0) { throw 'Source commit failed.' }
               git push
               if ($LASTEXITCODE -ne 0) { throw 'Source push failed.' }
@@ -57,7 +63,7 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.4."
+            throw "VERSION must contain a semantic version such as 0.2.5."
           }
 
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
@@ -108,25 +114,25 @@ jobs:
           @"
           ## VidCore Steralizer Desktop v$env:VERSION
 
-          This release contains both maintained players in separate downloads.
+          ### Artwork resolution
+          - Prefers Wikidata film posters, then official logos, before representative images
+          - Rejects actor/director portraits, cast photos, red-carpet images, diagrams, maps, buildings, and unrelated subject photos
+          - Automatically removes already-saved mismatched artwork while preserving titles, lists, notes, and watched state
+          - Displays posters with their complete aspect ratio instead of cropping them
 
-          ### Layout and built-in library
-          - Play/provider controls and the resolve metadata card now sit below the Stop/transport section
-          - The supplied 105-title, 24-list library is bundled into both players
-          - Existing edits are never overwritten
-          - Later releases only add previously unseen built-in titles and lists
-          - Deleted seeded items are not restored
+          ### Layout and external lookup
+          - Current metadata actions and sidebar card actions use consistent responsive grids
+          - Adds title-aware FastFlix, SeeFlix, and 123Movies lookup buttons
+          - Existing IMDb, TMDB, and Wikipedia links remain available
 
-          ### Playback and providers
-          - Provider selector order: VidCore, YTHD, VidUp
-          - Main Play uses the currently selected provider
-          - Saved-card Play uses that title's saved default provider
-          - Pause is directly beside Play
-          - Native WebView2 injects recursive pause handling into provider frames
+          ### Portable native data
+          - WebView2 browser cache, IndexedDB, localStorage, popup history, and settings now live in `data/` beside the executable
+          - The native package no longer scatters application data under Local AppData
 
-          ### Library backups
-          - Version 2 JSON stores provider categories once and uses compact per-title provider indexes
-          - Version 1 backups containing full `baseUrl` values remain import-compatible
+          ### Existing library and playback
+          - Includes the built-in 105-title, 24-list starter library
+          - Provider selector order remains VidCore, YTHD, VidUp
+          - Compact version 2 backup and legacy version 1 import remain supported
 
           ### Assets
           - `VidCoreNativePlayer-v$env:VERSION-windows-x64.zip`
