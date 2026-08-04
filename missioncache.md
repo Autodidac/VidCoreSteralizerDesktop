@@ -74,10 +74,17 @@
 - [x] Keep built-in history empty so a fresh install does not start with fabricated Continue Watching activity.
 - [x] Publish release `v0.2.8` with the complete merged default union.
 
+
+- [x] Resolve IMDb title and media-index poster images through a hidden WebView2 browser instead of a native HTTP scraper.
+- [x] Resolve TMDB title and poster-gallery images through the same browser path.
+- [x] Select the smallest usable `srcset` candidate, including IMDb width descriptors and TMDB 1x/2x descriptors.
+- [x] Add current-card controls to switch between IMDb and TMDB and flip through multiple poster candidates.
+- [x] Cache selected WebView2 image responses under `cache/` beside the executable without WinHTTP.
+- [x] Reuse cached variants by media identity and restore delete/prune lifecycle for unreferenced artwork.
+- [x] Publish release `v0.2.9` with the IMDb/TMDB artwork gallery and portable cache.
+
 ## Open / provider-limited
 
-- [ ] Restore IMDb-first/TMDB-second official artwork through a signed or independently verified implementation that does not trigger Defender.
-- [ ] Restore readable `cache/<media>.jpg` lifecycle only after the implementation passes Microsoft Defender analysis.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
 - [ ] Provider availability and stream quality remain controlled by the configured provider.

@@ -27,6 +27,10 @@
     randomButton: $("#randomButton"),
     resolveButton: $("#resolveButton"),
     favoriteButton: $("#favoriteButton"),
+    previousArtworkButton: $("#previousArtworkButton"),
+    imdbArtworkButton: $("#imdbArtworkButton"),
+    tmdbArtworkButton: $("#tmdbArtworkButton"),
+    nextArtworkButton: $("#nextArtworkButton"),
     currentPoster: $("#currentPoster"),
     currentType: $("#currentType"),
     currentTitle: $("#currentTitle"),
@@ -112,7 +116,10 @@
     dialogEntry: null,
     scanner: null,
     artworkSequence: 0,
-    artworkRequests: new Map()
+    artworkRequests: new Map(),
+    artworkGallery: { imdb: [], tmdb: [] },
+    artworkSource: "",
+    artworkIndex: 0
   };
 
   function postHost(message) {
@@ -130,20 +137,184 @@
     return `${mode}:id:${String(entry?.id || "unknown").toLowerCase()}`;
   }
 
-  function requestNativeArtwork(entry, metadata = entry) {
-    void entry;
-    void metadata;
-    return Promise.resolve("");
+  function artworkRequest(command, fields, timeout = 26000) {
+    if (!globalThis.chrome?.webview) {
+      return Promise.resolve(null);
+    }
+    const requestId = String(++state.artworkSequence);
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        state.artworkRequests.delete(requestId);
+        resolve(null);
+      }, timeout);
+      state.artworkRequests.set(requestId, { resolve, timer });
+      postHost([command, requestId, ...fields].join("|"));
+    });
+  }
+
+  function uniqueArtworkUrls(values) {
+    return [...new Set(
+      (Array.isArray(values) ? values : [])
+        .map(value => String(value || "").trim())
+        .filter(value => /^https:\/\//i.test(value))
+    )];
+  }
+
+  function normalizeArtworkGallery(payload) {
+    return {
+      imdb: uniqueArtworkUrls([
+        ...(payload?.imdbPrimary || []),
+        ...(payload?.imdbMore || [])
+      ]),
+      tmdb: uniqueArtworkUrls([
+        ...(payload?.tmdbPrimary || []),
+        ...(payload?.tmdbMore || [])
+      ])
+    };
+  }
+
+  function updateArtworkButtons() {
+    const imdbCount = state.artworkGallery.imdb.length;
+    const tmdbCount = state.artworkGallery.tmdb.length;
+    elements.imdbArtworkButton.classList.toggle("hidden", imdbCount === 0);
+    elements.tmdbArtworkButton.classList.toggle("hidden", tmdbCount === 0);
+    elements.imdbArtworkButton.classList.toggle(
+      "primary",
+      state.artworkSource === "imdb"
+    );
+    elements.tmdbArtworkButton.classList.toggle(
+      "primary",
+      state.artworkSource === "tmdb"
+    );
+    elements.imdbArtworkButton.textContent =
+      imdbCount ? `IMDb art ${state.artworkSource === "imdb" ? state.artworkIndex + 1 : 1}/${imdbCount}` : "IMDb art";
+    elements.tmdbArtworkButton.textContent =
+      tmdbCount ? `TMDB art ${state.artworkSource === "tmdb" ? state.artworkIndex + 1 : 1}/${tmdbCount}` : "TMDB art";
+
+    const activeCount = state.artworkGallery[state.artworkSource]?.length || 0;
+    elements.previousArtworkButton.classList.toggle("hidden", activeCount < 2);
+    elements.nextArtworkButton.classList.toggle("hidden", activeCount < 2);
+  }
+
+  function resetArtworkGallery() {
+    state.artworkGallery = { imdb: [], tmdb: [] };
+    state.artworkSource = "";
+    state.artworkIndex = 0;
+    updateArtworkButtons();
+  }
+
+  async function requestArtworkSources(entry, metadata = entry) {
+    const payload = await artworkRequest(
+      "resolve-image",
+      [
+        entry.mode === "tv" ? "tv" : "movie",
+        entry.id || "",
+        metadata?.imdb || "",
+        metadata?.tmdb || ""
+      ]
+    );
+    return normalizeArtworkGallery(payload || {});
+  }
+
+  async function cacheArtworkCandidate(
+    entry,
+    metadata,
+    source,
+    index,
+    url
+  ) {
+    const result = await artworkRequest(
+      "cache-image",
+      [
+        mediaCacheIdentity(entry, metadata),
+        source,
+        String(index),
+        url
+      ],
+      22000
+    );
+    return typeof result === "string" ? result : "";
+  }
+
+  async function showArtwork(source, index = 0, persist = true) {
+    const gallery = state.artworkGallery[source] || [];
+    if (gallery.length === 0) return;
+
+    const normalizedIndex =
+      ((Number(index) || 0) % gallery.length + gallery.length) % gallery.length;
+    state.artworkSource = source;
+    state.artworkIndex = normalizedIndex;
+    updateArtworkButtons();
+
+    const entry = currentEntrySafe();
+    const candidate = gallery[normalizedIndex];
+    const local = await cacheArtworkCandidate(
+      entry,
+      state.currentMetadata || {},
+      source,
+      normalizedIndex,
+      candidate
+    );
+    if (!isCurrentEntry(entry)) return;
+
+    const metadata = {
+      ...(state.currentMetadata || emptyMetadata(entry)),
+      image: local || candidate,
+      artworkSource:
+        source === "imdb"
+          ? "IMDb poster cache"
+          : "TMDB poster cache"
+    };
+    state.currentMetadata = metadata;
+    state.currentMetadataKey = VidCoreMetadata.entryKey(entry);
+    renderCurrent(entry, metadata);
+    if (persist) await persistMetadata(entry, metadata);
+  }
+
+  async function chooseArtworkSource(source) {
+    if (state.artworkSource === source) {
+      await showArtwork(source, state.artworkIndex + 1);
+    } else {
+      await showArtwork(source, 0);
+    }
+  }
+
+  async function stepArtwork(delta) {
+    if (!state.artworkSource) return;
+    await showArtwork(
+      state.artworkSource,
+      state.artworkIndex + delta
+    );
   }
 
   async function preferOfficialArtwork(entry, metadata) {
     try {
-      const image = await requestNativeArtwork(entry, metadata);
-      return image
+      const gallery = await requestArtworkSources(entry, metadata);
+      const source = gallery.imdb.length
+        ? "imdb"
+        : gallery.tmdb.length
+          ? "tmdb"
+          : "";
+      const candidate = source ? gallery[source][0] : "";
+      const image = candidate
+        ? await cacheArtworkCandidate(entry, metadata, source, 0, candidate)
+        : "";
+
+      if (isCurrentEntry(entry)) {
+        state.artworkGallery = gallery;
+        state.artworkSource = source;
+        state.artworkIndex = 0;
+        updateArtworkButtons();
+      }
+
+      return image || candidate
         ? {
             ...metadata,
-            image,
-            artworkSource: "IMDb/TMDB local cache"
+            image: image || candidate,
+            artworkSource:
+              source === "imdb"
+                ? "IMDb poster cache"
+                : "TMDB poster cache"
           }
         : metadata;
     } catch {
@@ -152,8 +323,16 @@
   }
 
   async function pruneNativeArtworkCache() {
-    // WebView2 owns its browser cache under data/ beside the executable.
+    if (!state.storageReady || !globalThis.chrome?.webview) return;
+    const favorites = await VidCoreStorage.getAll(
+      VidCoreStorage.STORES.favorites
+    );
+    const identities = [...new Set(
+      favorites.map(entry => mediaCacheIdentity(entry, entry))
+    )];
+    postHost(`prune-image-cache|${identities.join(",")}`);
   }
+
 
   function setStatus(title, text, type = "") {
     elements.statusTitle.textContent = title;
@@ -288,6 +467,7 @@
       state.currentMetadata = null;
       state.currentMetadataKey = "";
       state.related = [];
+      resetArtworkGallery();
       renderCurrent(entry, emptyMetadata(entry));
       renderRelated();
     }
@@ -368,6 +548,8 @@
     elements.wikipediaButton.dataset.url = wikipediaUrl;
 
     const catalogUrls = VidCoreMetadata.externalCatalogUrls(entry, metadata);
+    updateArtworkButtons();
+
     for (const [button, url] of [
       [elements.fastflixButton, catalogUrls.fastflix],
       [elements.seeflixButton, catalogUrls.seeflix],
@@ -1558,7 +1740,24 @@
       return;
     }
 
-    if (command === "image-resolved") {
+    if (command === "artwork-sources") {
+      const second = payload.indexOf("|");
+      const requestId = second < 0 ? payload : payload.slice(0, second);
+      const json = second < 0 ? "{}" : payload.slice(second + 1);
+      const pending = state.artworkRequests.get(requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        state.artworkRequests.delete(requestId);
+        try {
+          pending.resolve(JSON.parse(json));
+        } catch {
+          pending.resolve(null);
+        }
+      }
+      return;
+    }
+
+    if (command === "image-cached") {
       const second = payload.indexOf("|");
       const requestId = second < 0 ? payload : payload.slice(0, second);
       const remainder = second < 0 ? "" : payload.slice(second + 1);
@@ -1860,6 +2059,22 @@
     elements.favoriteButton.addEventListener(
       "click",
       () => openSaveDialog()
+    );
+    elements.previousArtworkButton.addEventListener(
+      "click",
+      () => stepArtwork(-1)
+    );
+    elements.nextArtworkButton.addEventListener(
+      "click",
+      () => stepArtwork(1)
+    );
+    elements.imdbArtworkButton.addEventListener(
+      "click",
+      () => chooseArtworkSource("imdb")
+    );
+    elements.tmdbArtworkButton.addEventListener(
+      "click",
+      () => chooseArtworkSource("tmdb")
     );
 
     elements.imdbButton.addEventListener(
