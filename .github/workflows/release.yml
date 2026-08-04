@@ -27,7 +27,7 @@ jobs:
       - name: Apply and commit staged source updates
         shell: pwsh
         run: |
-          $scripts = Get-ChildItem '.github/scripts/apply-v0.2.6*.py' -ErrorAction SilentlyContinue | Sort-Object Name
+          $scripts = Get-ChildItem '.github/scripts/apply-v*.py' -ErrorAction SilentlyContinue | Sort-Object Name
           foreach ($script in $scripts) {
             python -m py_compile $script.FullName
             if ($LASTEXITCODE -ne 0) { throw "Invalid staged updater: $($script.Name)" }
@@ -36,14 +36,15 @@ jobs:
           }
 
           if ($scripts.Count -gt 0) {
-            Remove-Item '.github/scripts/apply-v0.2.6*.py' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts/apply-v*.py' -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts/__pycache__' -Recurse -Force -ErrorAction SilentlyContinue
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add -A
             git diff --cached --quiet
             if ($LASTEXITCODE -ne 0) {
-              git commit -m 'Rebuild v0.2.6 without native downloader behavior'
+              $stagedVersion = (Get-Content VERSION -Raw).Trim()
+              git commit -m "Apply v$stagedVersion source update"
               if ($LASTEXITCODE -ne 0) { throw 'Source commit failed.' }
               git push
               if ($LASTEXITCODE -ne 0) { throw 'Source push failed.' }
@@ -58,7 +59,7 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.6."
+            throw "VERSION must contain a semantic version such as 0.2.7."
           }
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
           if ($cmake -notmatch "VERSION\s+$([regex]::Escape($version))") {
@@ -154,13 +155,13 @@ jobs:
           @"
           ## Shielded Native Stream Player v$env:VERSION
 
-          This rebuild removes the native WinHTTP page scraper/downloader and automatic image-file deletion code after a Windows Defender detection report. WebView2 still keeps its profile, normal browser cache, IndexedDB, settings, and popup history in `data/` beside the executable.
+          This release keeps the Defender-safe native host: no native WinHTTP page scraper, custom image downloader, or automatic image-file deletion code is included. WebView2 keeps its profile, normal browser cache, IndexedDB, settings, and popup history in `data/` beside the executable.
 
           The Windows executable was scanned during this release workflow. Result: $env:DEFENDER_SCAN
 
           The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A source-build ZIP is included so the native executable can be built locally with Visual Studio 2022.
 
-          Existing v0.2.6 interface, provider, backup, library, blocker, and metadata-filtering work remains included. The readable `cache/<media>.jpg` and IMDb/TMDB native-fetch missions remain open until they can be restored through a signed or independently verified implementation.
+          v$env:VERSION swaps the compact resolve card above the provider/play controls, adds safe custom-list deletion, hides or prunes empty custom lists, and preserves the complete 108-title built-in default library from the latest supplied backup.
 
           ### Assets
           - `ShieldedNativeStreamPlayer-v$env:VERSION-windows-x64.zip`
