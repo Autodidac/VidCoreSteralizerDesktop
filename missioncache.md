@@ -61,6 +61,12 @@
 - [x] Keep WebView2 profile data and its normal browser cache under `data/` beside the executable.
 - [x] Add a Windows Defender scan report and a source-build ZIP to the release artifacts.
 
+- [x] Put the compact resolve metadata card above the provider/play controls in both players.
+- [x] Add an explicit custom-list delete action that preserves saved titles by moving them to Favorites.
+- [x] Hide empty custom lists and prune empty list records after they are no longer selected.
+- [x] Reconcile the latest supplied backup so all 108 built-in default titles remain included without overwriting user edits.
+- [x] Publish release `v0.2.7` with the swapped top sections and list management cleanup.
+
 ## Open / provider-limited
 
 - [ ] Restore IMDb-first/TMDB-second official artwork through a signed or independently verified implementation that does not trigger Defender.

@@ -9,6 +9,7 @@ const html = fs.readFileSync(path.join(root, "assets", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "assets", "app.js"), "utf8");
 const metadata = fs.readFileSync(path.join(root, "assets", "metadata.js"), "utf8");
 const styles = fs.readFileSync(path.join(root, "assets", "styles.css"), "utf8");
+const additions = fs.readFileSync(path.join(root, "assets", "builtin-additions.js"), "utf8");
 const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
   "utf8"
@@ -30,7 +31,8 @@ for (const id of [
   "importButton",
   "fastflixButton",
   "seeflixButton",
-  "movies123Button"
+  "movies123Button",
+  "deleteListButton"
 ]) {
   assert.match(html, new RegExp(`id="${id}"`));
 }
@@ -61,11 +63,11 @@ assert.match(metadata, /isLikelyBadArtwork/);
 assert.match(metadata, /searchCommonsArtwork/);
 assert.match(metadata, /externalCatalogUrls/);
 assert.ok(
-  html.indexOf('class="source-panel panel"') <
-  html.indexOf('id="playerShell"')
+  html.indexOf('class="current-card panel"') <
+  html.indexOf('class="source-panel panel"')
 );
 assert.ok(
-  html.indexOf('class="current-card panel"') <
+  html.indexOf('class="source-panel panel"') <
   html.indexOf('id="playerShell"')
 );
 assert.match(html, /Shielded Native Stream Player/);
@@ -73,6 +75,13 @@ assert.doesNotMatch(html, /id="blockedCount"/);
 assert.match(html, /builtin-additions\.js/);
 assert.match(styles, /--primary: #2f8cff/);
 assert.match(styles, /aspect-ratio: 1/);
+assert.match(app, /async function deleteSelectedList/);
+assert.match(app, /VidCoreStorage\.remove\(VidCoreStorage\.STORES\.lists, name\)/);
+assert.match(app, /list: "Favorites"/);
+assert.match(app, /staleEmptyLists/);
+for (const title of ["Wednesday", "Landman", "Mating Season"]) {
+  assert.match(additions, new RegExp(`title: "${title}"`));
+}
 
 assert.match(webview, /NewWindowRequested/);
 assert.match(webview, /AddScriptToExecuteOnDocumentCreated/);

@@ -71,6 +71,7 @@
     addListButton: $("#addListButton"),
     resolveListButton: $("#resolveListButton"),
     markListWatchedButton: $("#markListWatchedButton"),
+    deleteListButton: $("#deleteListButton"),
     listChips: $("#listChips"),
     libraryCards: $("#libraryCards"),
     favoritesCards: $("#favoritesCards"),
@@ -759,10 +760,29 @@
   async function renderListControls() {
     if (!state.storageReady) return;
 
-    const { lists, favorites } = await listData();
+    let { lists, favorites } = await listData();
+    const customCount = name =>
+      favorites.filter(entry => entry.list === name).length;
+
+    // Empty custom lists disappear once they are no longer the actively
+    // selected newly-created list. This keeps the list bar free of dead labels
+    // without making a fresh list vanish before the user can put an item in it.
+    const staleEmptyLists = lists.filter(list =>
+      list.name !== "Favorites" &&
+      list.name !== state.selectedList &&
+      customCount(list.name) === 0
+    );
+    for (const list of staleEmptyLists) {
+      await VidCoreStorage.remove(VidCoreStorage.STORES.lists, list.name);
+    }
+    if (staleEmptyLists.length) {
+      lists = lists.filter(list => !staleEmptyLists.some(stale => stale.name === list.name));
+    }
+
     const customNames = lists
       .map(list => list.name)
-      .filter(name => name !== "Favorites");
+      .filter(name => name !== "Favorites")
+      .filter(name => customCount(name) > 0 || name === state.selectedList);
     const names = ["All", "Favorites", ...customNames];
 
     if (!names.includes(state.selectedList)) {
@@ -787,6 +807,12 @@
       });
       elements.listChips.append(chip);
     }
+
+    const customSelected = state.selectedList !== "All" &&
+      state.selectedList !== "Favorites" &&
+      lists.some(list => list.name === state.selectedList);
+    elements.deleteListButton.classList.toggle("hidden", !customSelected);
+    elements.deleteListButton.disabled = !customSelected;
 
     elements.saveList.replaceChildren();
     const orderedLists = [
@@ -1238,6 +1264,42 @@
     await renderListControls();
     await renderLibrary();
     setStatus("List created", name, "ok");
+  }
+
+  async function deleteSelectedList() {
+    const name = state.selectedList;
+    if (!name || name === "All" || name === "Favorites") {
+      setStatus("Choose a custom list", "All and Favorites cannot be deleted.", "warn");
+      return;
+    }
+
+    const favorites = await VidCoreStorage.getAll(
+      VidCoreStorage.STORES.favorites
+    );
+    const members = favorites.filter(entry => entry.list === name);
+    const moveNote = members.length
+      ? ` ${members.length} saved title${members.length === 1 ? "" : "s"} will move to Favorites.`
+      : "";
+    if (!globalThis.confirm(`Delete list “${name}”?${moveNote}`)) return;
+
+    const updatedAt = new Date().toISOString();
+    for (const entry of members) {
+      await VidCoreStorage.put(
+        VidCoreStorage.STORES.favorites,
+        { ...entry, list: "Favorites", updatedAt }
+      );
+    }
+    await VidCoreStorage.remove(VidCoreStorage.STORES.lists, name);
+
+    state.selectedList = "All";
+    await renderAllLibraryViews();
+    setStatus(
+      "List deleted",
+      members.length
+        ? `${name}; moved ${members.length} title${members.length === 1 ? "" : "s"} to Favorites.`
+        : name,
+      "ok"
+    );
   }
 
   async function selectedFavorites() {
@@ -1897,6 +1959,10 @@
     elements.markListWatchedButton.addEventListener(
       "click",
       markSelectedListWatched
+    );
+    elements.deleteListButton.addEventListener(
+      "click",
+      deleteSelectedList
     );
 
     elements.saveForm.addEventListener("submit", event => {
