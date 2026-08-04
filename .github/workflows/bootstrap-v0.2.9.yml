@@ -1,10 +1,10 @@
 name: Bootstrap v0.2.9 release
 
 on:
-  push:
+  pull_request:
     branches: [main]
     paths:
-      - .github/workflows/bootstrap-v0.2.9.yml
+      - .github/bootstrap-v0.2.9.trigger
   workflow_dispatch:
 
 permissions:
@@ -13,11 +13,13 @@ permissions:
 
 jobs:
   bootstrap:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source
+      - name: Check out release branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
           fetch-depth: 0
 
       - name: Apply staged v0.2.9 source
@@ -26,6 +28,7 @@ jobs:
           python3 .github/scripts/apply-v0.2.9.py
           rm -f .github/scripts/apply-v0.2.9.py
           rm -rf .github/scripts/__pycache__
+          rm -f .github/bootstrap-v0.2.9.trigger
 
       - name: Commit finished source
         run: |
@@ -34,9 +37,10 @@ jobs:
           git add -A
           git diff --cached --quiet && exit 0
           git commit -m 'Apply v0.2.9 source update'
-          git push
+          git push origin "HEAD:${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
 
       - name: Dispatch Windows release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          RELEASE_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_REF"
