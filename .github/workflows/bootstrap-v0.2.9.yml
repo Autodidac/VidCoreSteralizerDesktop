@@ -26,6 +26,7 @@ jobs:
         run: |
           python3 -m py_compile .github/scripts/apply-v0.2.9.py
           python3 .github/scripts/apply-v0.2.9.py
+          git checkout -- .github/workflows/release.yml
           rm -f .github/scripts/apply-v0.2.9.py
           rm -rf .github/scripts/__pycache__
           rm -f .github/bootstrap-v0.2.9.trigger
