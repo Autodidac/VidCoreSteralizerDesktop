@@ -186,6 +186,25 @@ private:
             report("form-navigation", action);
         }
     }, true);
+
+
+    addEventListener("message", (event) => {
+        const command = event.data;
+        if (!command ||
+            command.type !== "VIDCORE_PLAYER_COMMAND" ||
+            command.action !== "pause") {
+            return;
+        }
+
+        for (const frame of document.querySelectorAll("iframe")) {
+            try { frame.contentWindow?.postMessage(command, "*"); } catch {}
+        }
+
+        for (const media of document.querySelectorAll("video, audio")) {
+            try { media.pause(); } catch {}
+        }
+    }, true);
+
 })();
 )JS";
 

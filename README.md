@@ -15,3 +15,11 @@ Two maintained VidCore players live in separate folders:
 - Related-title images receive the same bounded repair pass.
 
 Start with the README inside the version you want to run.
+
+
+## v0.2.2
+
+- Provider order: VidCore, YTHD, VidUp.
+- Pause is directly beside Play.
+- Saved cards retain their own provider while the main Play uses the currently selected provider.
+- New JSON backups use compact provider-indexed backups and still import the version 1 full-URL format.

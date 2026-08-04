@@ -36,12 +36,11 @@
         <section class="source-panel panel">
           <label class="field provider-field">
             <span>Provider</span>
-            <input
-                id="baseUrl"
-                type="url"
-                value="https://vidcore.net"
-                spellcheck="false"
-                autocomplete="off">
+            <select id="baseUrl" aria-label="Streaming provider">
+              <option value="https://vidcore.net" selected>VidCore</option>
+              <option value="https://ythd.org/embed">YTHD</option>
+              <option value="https://vidup.to">VidUp</option>
+            </select>
           </label>
 
           <label class="field mode-field">
@@ -79,6 +78,8 @@
           </button>
 
           <button id="playButton" class="button primary">Play</button>
+
+          <button id="pauseButton" class="button">Pause</button>
 
           <button
               id="nextButton"
@@ -295,7 +296,7 @@
     <div class="dialog-body">
       <h3>Library storage</h3>
       <p>
-        Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. JSON export is the portable backup.
+        Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
       </p>
       <p>
         Exact playback position is unavailable because the provider frame is cross-origin. Continue Watching records played titles and manual completion state.
@@ -323,6 +324,7 @@
 
   <script src="storage.js"></script>
   <script src="metadata.js"></script>
+  <script src="providers.js"></script>
   <script src="scanner.js"></script>
   <script src="app.js"></script>
 </body>

@@ -853,3 +853,15 @@ body.theater .topbar {
     flex-wrap: wrap;
   }
 }
+
+
+/* v0.2.2 provider controls */
+@media (min-width: 1181px) {
+  .source-panel {
+    grid-template-columns:
+        minmax(210px, 1fr)
+        96px
+        minmax(120px, 0.42fr)
+        auto auto auto auto auto auto 124px auto;
+  }
+}

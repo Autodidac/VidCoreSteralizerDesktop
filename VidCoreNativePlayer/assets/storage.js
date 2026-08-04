@@ -297,20 +297,125 @@
     return (await backend()).clear(storeName);
   }
 
+  const BUILTIN_PROVIDERS = Object.freeze([
+    Object.freeze({ id: "vidcore", label: "VidCore", baseUrl: "https://vidcore.net" }),
+    Object.freeze({ id: "ythd", label: "YTHD", baseUrl: "https://ythd.org/embed" }),
+    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" })
+  ]);
+
+  function normalizeProviderUrl(value) {
+    try {
+      const parsed = new URL(String(value || "").trim());
+      return parsed.origin + parsed.pathname.replace(/\/+$/, "");
+    } catch {
+      return BUILTIN_PROVIDERS[0].baseUrl;
+    }
+  }
+
+  function providerCatalog(entries) {
+    const catalog = BUILTIN_PROVIDERS.map(provider => ({ ...provider }));
+    const known = new Set(catalog.map(provider => provider.baseUrl));
+
+    for (const entry of entries) {
+      const baseUrl = normalizeProviderUrl(entry?.baseUrl);
+      if (!known.has(baseUrl)) {
+        known.add(baseUrl);
+        catalog.push({
+          id: `custom-${catalog.length}`,
+          label: new URL(baseUrl).hostname,
+          baseUrl
+        });
+      }
+    }
+
+    return catalog;
+  }
+
+  function compactEntry(entry, providers) {
+    const baseUrl = normalizeProviderUrl(entry?.baseUrl);
+    const provider = Math.max(
+      0,
+      providers.findIndex(candidate => candidate.baseUrl === baseUrl)
+    );
+    const {
+      baseUrl: ignoredBaseUrl,
+      key: ignoredKey,
+      provider: ignoredProvider,
+      ...rest
+    } = entry;
+    return provider === 0 ? rest : { ...rest, provider };
+  }
+
+  function recordKey(entry) {
+    const baseUrl = normalizeProviderUrl(entry.baseUrl);
+    return entry.mode === "tv"
+      ? `${baseUrl}|tv|${entry.id}|${entry.season ?? 1}|${entry.episode ?? 1}`
+      : `${baseUrl}|movie|${entry.id}`;
+  }
+
+  function expandEntry(entry, providers) {
+    if (!entry || typeof entry !== "object") return null;
+
+    let baseUrl = entry.baseUrl;
+    if (!baseUrl) {
+      const reference = Number.isInteger(entry.provider)
+        ? entry.provider
+        : Number.parseInt(entry.provider, 10);
+      baseUrl = providers[Number.isInteger(reference) ? reference : 0]?.baseUrl;
+    }
+
+    const expanded = {
+      ...entry,
+      baseUrl: normalizeProviderUrl(baseUrl)
+    };
+    delete expanded.provider;
+    expanded.key = recordKey(expanded);
+    return expanded;
+  }
+
+  function readProviderCatalog(payload) {
+    const source = Array.isArray(payload?.providers)
+      ? payload.providers
+      : Array.isArray(payload?.servers)
+        ? payload.servers
+        : [];
+
+    const catalog = source
+      .map((provider, index) => {
+        const value = typeof provider === "string"
+          ? provider
+          : provider?.baseUrl || provider?.url;
+        if (!value) return null;
+        const baseUrl = normalizeProviderUrl(value);
+        return {
+          id: provider?.id || `provider-${index}`,
+          label: provider?.label || new URL(baseUrl).hostname,
+          baseUrl
+        };
+      })
+      .filter(Boolean);
+
+    return catalog.length
+      ? catalog
+      : BUILTIN_PROVIDERS.map(provider => ({ ...provider }));
+  }
+
   async function exportData(extra = {}) {
     const [favorites, lists, history] = await Promise.all([
       getAll(STORES.favorites),
       getAll(STORES.lists),
       getAll(STORES.history)
     ]);
+    const providers = providerCatalog([...favorites, ...history]);
 
     return {
       format: "vidcore-native-library",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
-      favorites,
+      providers,
+      favorites: favorites.map(entry => compactEntry(entry, providers)),
       lists,
-      history,
+      history: history.map(entry => compactEntry(entry, providers)),
       ...extra
     };
   }
@@ -320,30 +425,23 @@
       throw new Error("Backup is not a JSON object.");
     }
 
-    const favorites = Array.isArray(payload.favorites)
-      ? payload.favorites
-      : [];
-    const lists = Array.isArray(payload.lists)
-      ? payload.lists
-      : [];
-    const history = Array.isArray(payload.history)
-      ? payload.history
-      : [];
-
+    const providers = readProviderCatalog(payload);
+    const rawFavorites = Array.isArray(payload.favorites) ? payload.favorites : [];
+    const lists = Array.isArray(payload.lists) ? payload.lists : [];
+    const rawHistory = Array.isArray(payload.history) ? payload.history : [];
+    const favorites = rawFavorites
+      .map(entry => expandEntry(entry, providers))
+      .filter(Boolean);
+    const history = rawHistory
+      .map(entry => expandEntry(entry, providers))
+      .filter(Boolean);
     const target = await backend();
 
     for (const list of lists) {
-      if (list?.name) {
-        await target.put(STORES.lists, list);
-      }
+      if (list?.name) await target.put(STORES.lists, list);
     }
 
-    const existingFavoriteList = await target.get(
-      STORES.lists,
-      "Favorites"
-    );
-
-    if (!existingFavoriteList) {
+    if (!await target.get(STORES.lists, "Favorites")) {
       await target.put(STORES.lists, {
         name: "Favorites",
         createdAt: new Date().toISOString()
@@ -351,21 +449,18 @@
     }
 
     for (const entry of favorites) {
-      if (entry?.key) {
-        await target.put(STORES.favorites, entry);
-      }
+      if (entry.key) await target.put(STORES.favorites, entry);
     }
 
     for (const entry of history) {
-      if (entry?.key) {
-        await target.put(STORES.history, entry);
-      }
+      if (entry.key) await target.put(STORES.history, entry);
     }
 
     return {
       favorites: favorites.length,
       lists: lists.length,
-      history: history.length
+      history: history.length,
+      importedVersion: Number(payload.version) || 1
     };
   }
 

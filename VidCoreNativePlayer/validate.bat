@@ -14,6 +14,9 @@ if errorlevel 1 exit /b %errorlevel%
 node --check assets\metadata.js
 if errorlevel 1 exit /b %errorlevel%
 
+node --check assets\providers.js
+if errorlevel 1 exit /b %errorlevel%
+
 node --check assets\scanner.js
 if errorlevel 1 exit /b %errorlevel%
 
@@ -24,6 +27,12 @@ node tests\static-smoke.test.mjs
 if errorlevel 1 exit /b %errorlevel%
 
 node tests\logic.test.mjs
+if errorlevel 1 exit /b %errorlevel%
+
+node tests\providers.test.mjs
+if errorlevel 1 exit /b %errorlevel%
+
+node tests\storage-format.test.mjs
 if errorlevel 1 exit /b %errorlevel%
 
 echo Validation passed.
