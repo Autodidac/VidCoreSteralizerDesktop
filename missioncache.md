@@ -18,7 +18,6 @@
 - [x] Add a repeatable Windows release workflow driven by the root `VERSION` file.
 - [x] Validate and build the native C++23 project with Visual Studio 2022 on GitHub Actions.
 - [x] Publish release `v0.2.1` with separate native Windows x64 and web-player ZIPs plus SHA-256 checksums.
-
 - [x] Add VidCore, YTHD, and VidUp provider choices in that order to both players.
 - [x] Add provider-aware movie and TV URL construction.
 - [x] Add Pause directly beside Play in both players.
@@ -26,7 +25,7 @@
 - [x] Add compact version 2 backups with provider categories stored once and per-title provider indexes.
 - [x] Preserve import compatibility with version 1 backups containing full `baseUrl` values.
 - [x] Add provider, pause, compact-backup, and legacy-import validation.
-- [ ] Publish release `v0.2.2` with refreshed native and web-player assets.
+- [x] Publish release `v0.2.2` with refreshed native and web-player assets.
 
 ## Open / provider-limited
 
