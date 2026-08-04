@@ -27,20 +27,24 @@ jobs:
       - name: Apply and commit staged source update
         shell: pwsh
         run: |
-          $bundle = '.github/scripts/apply-v0.2.5.py.gz.b64'
-          if (Test-Path $bundle) {
-            python -c "import base64,gzip,pathlib; p=pathlib.Path(r'$bundle'); pathlib.Path(r'.github/scripts/apply-v0.2.5.py').write_bytes(gzip.decompress(base64.b64decode(p.read_text())))"
+          $parts = Get-ChildItem '.github/scripts/apply-v0.2.5.part*' -ErrorAction SilentlyContinue | Sort-Object Name
+          if ($parts.Count -gt 0) {
+            $script = '.github/scripts/apply-v0.2.5.py'
+            $parts | ForEach-Object { Get-Content $_.FullName -Raw } | Set-Content $script -Encoding utf8
+
+            python -m py_compile $script
             if ($LASTEXITCODE -ne 0) {
-              throw "The v0.2.5 source updater could not be unpacked."
+              throw "The staged v0.2.5 updater is not valid Python."
             }
 
-            python .github/scripts/apply-v0.2.5.py
+            python $script
             if ($LASTEXITCODE -ne 0) {
               throw "The v0.2.5 source update failed with exit code $LASTEXITCODE."
             }
 
-            Remove-Item '.github/scripts/apply-v0.2.5.py' -Force -ErrorAction SilentlyContinue
-            Remove-Item $bundle -Force -ErrorAction SilentlyContinue
+            Remove-Item $script -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts/apply-v0.2.5.part*' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts/apply-v0.2.5.py.gz.b64' -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts' -Force -ErrorAction SilentlyContinue
 
             git config user.name 'github-actions[bot]'
@@ -48,7 +52,7 @@ jobs:
             git add -A
             git diff --cached --quiet
             if ($LASTEXITCODE -ne 0) {
-              git commit -m 'Improve artwork resolution and portable storage'
+              git commit -m 'Improve artwork resolution, layout, links, and portable storage'
               if ($LASTEXITCODE -ne 0) { throw 'Source commit failed.' }
               git push
               if ($LASTEXITCODE -ne 0) { throw 'Source push failed.' }
@@ -115,19 +119,22 @@ jobs:
           ## VidCore Steralizer Desktop v$env:VERSION
 
           ### Artwork resolution
-          - Prefers Wikidata film posters, then official logos, before representative images
+          - Prefers exact Wikidata film posters and title logos before representative images
           - Rejects actor/director portraits, cast photos, red-carpet images, diagrams, maps, buildings, and unrelated subject photos
+          - Adds strict film/TV article validation and a Wikimedia Commons fallback
           - Automatically removes already-saved mismatched artwork while preserving titles, lists, notes, and watched state
-          - Displays posters with their complete aspect ratio instead of cropping them
+          - Displays posters at their complete aspect ratio instead of cropping them
 
           ### Layout and external lookup
-          - Current metadata actions and sidebar card actions use consistent responsive grids
-          - Adds title-aware FastFlix, SeeFlix, and 123Movies lookup buttons
-          - Existing IMDb, TMDB, and Wikipedia links remain available
+          - Restores the provider/play section to the top of both players
+          - Keeps the resolve metadata card below Stop/transport
+          - Corrects right-sidebar card and action-button wrapping across desktop and collapsed layouts
+          - Adds FastFlix, SeeFlix, and 123Movies title lookup buttons alongside IMDb, TMDB, and Wikipedia
 
           ### Portable native data
-          - WebView2 browser cache, IndexedDB, localStorage, popup history, and settings now live in `data/` beside the executable
-          - The native package no longer scatters application data under Local AppData
+          - WebView2 browser and image cache, IndexedDB, localStorage, popup history, and settings live in `data/` beside the executable
+          - Assets resolve relative to the executable instead of the launch working directory
+          - The native package no longer creates its own application data folder under Local AppData
 
           ### Existing library and playback
           - Includes the built-in 105-title, 24-list starter library
