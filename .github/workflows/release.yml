@@ -24,34 +24,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply and commit staged source update
+      - name: Apply and commit staged source updates
         shell: pwsh
         run: |
-          $parts = Get-ChildItem '.github/scripts/apply-v0.2.5.part*' -ErrorAction SilentlyContinue | Sort-Object Name
-          if ($parts.Count -gt 0) {
-            $script = '.github/scripts/apply-v0.2.5.py'
-            $parts | ForEach-Object { Get-Content $_.FullName -Raw } | Set-Content $script -Encoding utf8
-
-            python -m py_compile $script
+          $scripts = Get-ChildItem '.github/scripts/apply-v0.2.6*.py' -ErrorAction SilentlyContinue | Sort-Object Name
+          foreach ($script in $scripts) {
+            python -m py_compile $script.FullName
             if ($LASTEXITCODE -ne 0) {
-              throw "The staged v0.2.5 updater is not valid Python."
+              throw "Invalid staged updater: $($script.Name)"
             }
-
-            python $script
+            python $script.FullName
             if ($LASTEXITCODE -ne 0) {
-              throw "The v0.2.5 source update failed with exit code $LASTEXITCODE."
+              throw "Source updater failed: $($script.Name)"
             }
+          }
 
-            Remove-Item $script -Force -ErrorAction SilentlyContinue
-            Remove-Item '.github/scripts/apply-v0.2.5.part*' -Force -ErrorAction SilentlyContinue
-            Remove-Item '.github/scripts/apply-v0.2.5.py.gz.b64' -Force -ErrorAction SilentlyContinue
-
+          if ($scripts.Count -gt 0) {
+            Remove-Item '.github/scripts/apply-v0.2.6*.py' -Force -ErrorAction SilentlyContinue
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add -A
             git diff --cached --quiet
             if ($LASTEXITCODE -ne 0) {
-              git commit -m 'Improve artwork resolution, layout, links, and portable storage'
+              git commit -m 'Release IMDb TMDB cached artwork and compact blue player'
               if ($LASTEXITCODE -ne 0) { throw 'Source commit failed.' }
               git push
               if ($LASTEXITCODE -ne 0) { throw 'Source push failed.' }
@@ -66,7 +61,7 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.5."
+            throw "VERSION must contain a semantic version such as 0.2.6."
           }
 
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
@@ -94,6 +89,8 @@ jobs:
           Copy-Item 'VidCoreNativePlayer/build/Release/VidCoreNativePlayer.exe' $nativeStage
           Copy-Item 'VidCoreNativePlayer/build/Release/assets' (Join-Path $nativeStage 'assets') -Recurse
           Copy-Item 'VidCoreNativePlayer/README.md' $nativeStage
+          New-Item -ItemType Directory -Force -Path (Join-Path $nativeStage 'cache') | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $nativeStage 'data') | Out-Null
           @(
             '@echo off',
             'cd /d "%~dp0"',
@@ -115,30 +112,30 @@ jobs:
           $hashLines | Set-Content (Join-Path $dist 'SHA256SUMS.txt') -Encoding ascii
 
           @"
-          ## VidCore Steralizer Desktop v$env:VERSION
+          ## Shielded Native Stream Player v$env:VERSION
 
-          ### Artwork resolution
-          - Prefers exact Wikidata film posters and title logos before representative images
-          - Rejects actor/director portraits, cast photos, red-carpet images, diagrams, maps, buildings, and unrelated subject photos
-          - Adds strict film/TV article validation and a Wikimedia Commons fallback
-          - Automatically removes already-saved mismatched artwork while preserving titles, lists, notes, and watched state
-          - Displays posters at their complete aspect ratio instead of cropping them
+          ### Official artwork and portable cache
+          - Resolves IMDb title/media imagery first
+          - Uses TMDB title/backdrop imagery second
+          - Uses strict Wikidata, Wikipedia, and Wikimedia Commons imagery only as fallback
+          - Stores native artwork in `cache/` beside the executable
+          - Reuses one media cache entry across VidCore, YTHD, and VidUp
+          - Deletes cached artwork when the final saved library copy is removed
+          - Prunes orphaned cache images at startup and after imports
 
-          ### Layout and external lookup
-          - Restores the provider/play section to the top of both players
-          - Keeps the resolve metadata card below Stop/transport
-          - Corrects right-sidebar card and action-button wrapping across desktop and collapsed layouts
-          - Adds FastFlix, SeeFlix, and 123Movies title lookup buttons alongside IMDb, TMDB, and Wikipedia
+          ### Interface
+          - Renames the application to Shielded Native Stream Player
+          - Keeps provider controls and the compact resolve card above the player
+          - Uses square artwork and horizontal wrapping card actions
+          - Changes the accent theme from purple to blue
+          - Keeps popup protection active without displaying a blocker count
 
-          ### Portable native data
-          - WebView2 browser and image cache, IndexedDB, localStorage, popup history, and settings live in `data/` beside the executable
-          - Assets resolve relative to the executable instead of the launch working directory
-          - The native package no longer creates its own application data folder under Local AppData
-
-          ### Existing library and playback
-          - Includes the built-in 105-title, 24-list starter library
-          - Provider selector order remains VidCore, YTHD, VidUp
-          - Compact version 2 backup and legacy version 1 import remain supported
+          ### Library and compatibility
+          - Adds Wednesday, Landman, and Mating Season to the non-destructive built-in defaults
+          - Preserves existing user edits and deleted-seed tracking
+          - Keeps provider order VidCore, YTHD, VidUp
+          - Keeps compact version 2 backups and legacy version 1 imports
+          - Keeps FastFlix, SeeFlix, and 123Movies title lookup buttons
 
           ### Assets
           - `VidCoreNativePlayer-v$env:VERSION-windows-x64.zip`
@@ -161,7 +158,7 @@ jobs:
           gh release create $env:TAG `
             --repo $env:GITHUB_REPOSITORY `
             --target $env:RELEASE_TARGET `
-            --title "VidCore Steralizer Desktop $env:TAG" `
+            --title "Shielded Native Stream Player $env:TAG" `
             --notes-file dist/RELEASE_NOTES.md `
             --latest `
             dist/VidCoreNativePlayer-v$env:VERSION-windows-x64.zip `
