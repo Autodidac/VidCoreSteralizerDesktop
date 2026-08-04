@@ -11,6 +11,9 @@ if errorlevel 1 (
 node --check assets\storage.js
 if errorlevel 1 exit /b %errorlevel%
 
+node --check assets\builtin-library.js
+if errorlevel 1 exit /b %errorlevel%
+
 node --check assets\metadata.js
 if errorlevel 1 exit /b %errorlevel%
 
@@ -30,6 +33,9 @@ node tests\logic.test.mjs
 if errorlevel 1 exit /b %errorlevel%
 
 node tests\providers.test.mjs
+if errorlevel 1 exit /b %errorlevel%
+
+node tests\builtin-library.test.mjs
 if errorlevel 1 exit /b %errorlevel%
 
 node tests\storage-format.test.mjs

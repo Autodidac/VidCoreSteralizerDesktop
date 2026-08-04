@@ -10,6 +10,7 @@
   });
   const STORE_NAMES = Object.values(STORES);
   const FALLBACK_PREFIX = "vidcoreNative.fallback.";
+  const BUILTIN_SEED_STATE_KEY = "vidcoreNative.builtinSeedState.v1";
 
   function requestPromise(request) {
     return new Promise((resolve, reject) => {
@@ -263,6 +264,8 @@
         });
       }
 
+      await mergeBuiltInLibrary();
+
       return state.backend;
     })();
 
@@ -398,6 +401,73 @@
     return catalog.length
       ? catalog
       : BUILTIN_PROVIDERS.map(provider => ({ ...provider }));
+  }
+
+  async function mergeBuiltInLibrary() {
+    let payload = globalThis.VidCoreBuiltInLibrary;
+    if (!payload && globalThis.VidCoreBuiltInLibraryPromise) {
+      try {
+        payload = await globalThis.VidCoreBuiltInLibraryPromise;
+      } catch {
+        return { favorites: 0, lists: 0 };
+      }
+    }
+
+    if (!payload || typeof payload !== "object" || !state.backend) {
+      return { favorites: 0, lists: 0 };
+    }
+
+    let seedState = { favorites: [], lists: [] };
+    try {
+      const saved = JSON.parse(localStorage.getItem(BUILTIN_SEED_STATE_KEY) || "{}");
+      if (saved && typeof saved === "object") {
+        seedState = {
+          favorites: Array.isArray(saved.favorites) ? saved.favorites : [],
+          lists: Array.isArray(saved.lists) ? saved.lists : []
+        };
+      }
+    } catch {
+    }
+
+    const knownFavorites = new Set(seedState.favorites);
+    const knownLists = new Set(seedState.lists);
+    const providers = readProviderCatalog(payload);
+    const lists = Array.isArray(payload.lists) ? payload.lists : [];
+    const favorites = (Array.isArray(payload.favorites) ? payload.favorites : [])
+      .map(entry => expandEntry(entry, providers))
+      .filter(Boolean);
+    let addedLists = 0;
+    let addedFavorites = 0;
+
+    for (const list of lists) {
+      const name = String(list?.name || "").trim();
+      if (!name || knownLists.has(name)) continue;
+      if (!await state.backend.get(STORES.lists, name)) {
+        await state.backend.put(STORES.lists, list);
+        addedLists += 1;
+      }
+      knownLists.add(name);
+    }
+
+    for (const entry of favorites) {
+      if (!entry.key || knownFavorites.has(entry.key)) continue;
+      if (!await state.backend.get(STORES.favorites, entry.key)) {
+        await state.backend.put(STORES.favorites, entry);
+        addedFavorites += 1;
+      }
+      knownFavorites.add(entry.key);
+    }
+
+    try {
+      localStorage.setItem(BUILTIN_SEED_STATE_KEY, JSON.stringify({
+        version: String(payload.exportedAt || payload.version || "builtin"),
+        favorites: [...knownFavorites],
+        lists: [...knownLists]
+      }));
+    } catch {
+    }
+
+    return { favorites: addedFavorites, lists: addedLists };
   }
 
   async function exportData(extra = {}) {

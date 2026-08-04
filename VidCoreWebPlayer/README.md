@@ -21,3 +21,5 @@ The web shell can block its own popup attempts, but a normal web page cannot inj
 - Pause is directly beside Play.
 - Saved cards retain their own provider while the main Play uses the currently selected provider.
 - New JSON backups use compact provider-indexed backups and still import the version 1 full-URL format.
+
+- v0.2.4 places playback/resolve controls below transport and includes a non-destructive built-in starter library.

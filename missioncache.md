@@ -28,6 +28,11 @@
 - [x] Publish release `v0.2.2` with refreshed native and web-player assets.
 - [x] Correct the follow-up release version and publish `v0.2.3`.
 
+- [x] Move Play/provider controls and the resolve metadata card below the Stop/transport section.
+- [x] Bundle the supplied 105-title, 24-list library into both players.
+- [x] Merge only previously unseen built-in titles and lists without overwriting edits or restoring deleted seed items.
+- [x] Publish release `v0.2.4` with the built-in starter library.
+
 ## Open / provider-limited
 
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.

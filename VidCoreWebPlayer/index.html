@@ -33,6 +33,47 @@
 
     <main class="workspace">
       <section class="main-column">
+        <section id="playerShell" class="player-shell panel">
+          <iframe
+              id="player"
+              title="Streaming player"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin">
+          </iframe>
+
+          <div id="emptyPlayer" class="player-empty">
+            <div class="play-glyph">▶</div>
+            <strong>Ready at movie ID 1</strong>
+            <span>Press Play or use metadata discovery.</span>
+          </div>
+        </section>
+
+        <section class="transport panel">
+          <div class="transport-row">
+            <button id="stopButton" class="button danger">Stop</button>
+            <button id="copyUrlButton" class="button">Copy URL</button>
+            <button id="muteButton" class="button">Mute</button>
+            <button id="theaterModeButton" class="button">Theater</button>
+            <button id="fullscreenButton" class="button">Fullscreen</button>
+            <button id="devtoolsButton" class="button">DevTools</button>
+          </div>
+
+          <div class="zoom-row">
+            <span>UI zoom</span>
+            <button id="zoomOutButton" class="round-button">−</button>
+            <input
+                id="zoomSlider"
+                type="range"
+                min="50"
+                max="200"
+                step="10"
+                value="100">
+            <button id="zoomInButton" class="round-button">+</button>
+            <output id="zoomOutput">100%</output>
+          </div>
+        </section>
+
         <section class="source-panel panel">
           <label class="field provider-field">
             <span>Provider</span>
@@ -117,47 +158,6 @@
             <button id="imdbButton" class="button hidden">IMDb</button>
             <button id="tmdbButton" class="button hidden">TMDB</button>
             <button id="wikipediaButton" class="button hidden">Wikipedia</button>
-          </div>
-        </section>
-
-        <section id="playerShell" class="player-shell panel">
-          <iframe
-              id="player"
-              title="Streaming player"
-              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-              allowfullscreen
-              referrerpolicy="strict-origin-when-cross-origin">
-          </iframe>
-
-          <div id="emptyPlayer" class="player-empty">
-            <div class="play-glyph">▶</div>
-            <strong>Ready at movie ID 1</strong>
-            <span>Press Play or use metadata discovery.</span>
-          </div>
-        </section>
-
-        <section class="transport panel">
-          <div class="transport-row">
-            <button id="stopButton" class="button danger">Stop</button>
-            <button id="copyUrlButton" class="button">Copy URL</button>
-            <button id="muteButton" class="button">Mute</button>
-            <button id="theaterModeButton" class="button">Theater</button>
-            <button id="fullscreenButton" class="button">Fullscreen</button>
-            <button id="devtoolsButton" class="button">DevTools</button>
-          </div>
-
-          <div class="zoom-row">
-            <span>UI zoom</span>
-            <button id="zoomOutButton" class="round-button">−</button>
-            <input
-                id="zoomSlider"
-                type="range"
-                min="50"
-                max="200"
-                step="10"
-                value="100">
-            <button id="zoomInButton" class="round-button">+</button>
-            <output id="zoomOutput">100%</output>
           </div>
         </section>
 
@@ -322,6 +322,7 @@
     </div>
   </dialog>
 
+  <script src="builtin-library.js"></script>
   <script src="storage.js"></script>
   <script src="metadata.js"></script>
   <script src="providers.js"></script>
