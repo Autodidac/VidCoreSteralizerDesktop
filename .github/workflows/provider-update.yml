@@ -1,4 +1,4 @@
-name: Apply provider and pause update
+name: Apply provider, pause, and backup update
 
 on:
   push:
@@ -9,6 +9,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: vidcore-provider-update
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -30,38 +34,47 @@ jobs:
           def replace_once(path, old, new):
               text = path.read_text(encoding='utf-8')
               if old not in text:
-                  raise RuntimeError(f'Expected text not found in {path}: {old[:80]!r}')
+                  raise RuntimeError(f'Expected text not found in {path}: {old[:100]!r}')
               path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
 
           def patch_html(path):
               text = path.read_text(encoding='utf-8')
-              pattern = re.compile(
+              provider_pattern = re.compile(
                   r'<input\s+id="baseUrl"\s+type="url"\s+value="https://vidcore\.net"\s+spellcheck="false"\s+autocomplete="off">',
                   re.S,
               )
-              replacement = '''<select id="baseUrl" aria-label="Streaming provider">
+              provider_select = '''<select id="baseUrl" aria-label="Streaming provider">
               <option value="https://vidcore.net" selected>VidCore</option>
               <option value="https://ythd.org/embed">YTHD</option>
               <option value="https://vidup.to">VidUp</option>
             </select>'''
-              text, count = pattern.subn(replacement, text, count=1)
+              text, count = provider_pattern.subn(provider_select, text, count=1)
               if count != 1:
                   raise RuntimeError(f'Provider input not found in {path}')
 
               play = '<button id="playButton" class="button primary">Play</button>'
-              pause = play + '\n\n          <button id="pauseButton" class="button">Pause</button>'
-              if play not in text:
-                  raise RuntimeError(f'Play button not found in {path}')
-              text = text.replace(play, pause, 1)
+              text = text.replace(
+                  play,
+                  play + '\n\n          <button id="pauseButton" class="button">Pause</button>',
+                  1,
+              )
 
               scripts = '  <script src="metadata.js"></script>\n  <script src="scanner.js"></script>'
-              scripts_with_providers = '  <script src="metadata.js"></script>\n  <script src="providers.js"></script>\n  <script src="scanner.js"></script>'
-              if scripts not in text:
-                  raise RuntimeError(f'Script order marker not found in {path}')
-              text = text.replace(scripts, scripts_with_providers, 1)
+              text = text.replace(
+                  scripts,
+                  '  <script src="metadata.js"></script>\n  <script src="providers.js"></script>\n  <script src="scanner.js"></script>',
+                  1,
+              )
+
+              old_storage = 'JSON export is the portable backup.'
+              new_storage = (
+                  'JSON export stores provider categories once, then uses compact provider indexes per title. '
+                  'Version 1 backups with full provider URLs remain import-compatible.'
+              )
+              text = text.replace(old_storage, new_storage, 1)
               path.write_text(text, encoding='utf-8', newline='\n')
 
-          provider_script = r'''"use strict";
+          providers_js = r'''"use strict";
 
 (() => {
   const metadata = globalThis.VidCoreMetadata;
@@ -70,21 +83,9 @@ jobs:
   }
 
   const providers = Object.freeze([
-    Object.freeze({
-      id: "vidcore",
-      label: "VidCore",
-      baseUrl: "https://vidcore.net"
-    }),
-    Object.freeze({
-      id: "ythd",
-      label: "YTHD",
-      baseUrl: "https://ythd.org/embed"
-    }),
-    Object.freeze({
-      id: "vidup",
-      label: "VidUp",
-      baseUrl: "https://vidup.to"
-    })
+    Object.freeze({ id: "vidcore", label: "VidCore", baseUrl: "https://vidcore.net" }),
+    Object.freeze({ id: "ythd", label: "YTHD", baseUrl: "https://ythd.org/embed" }),
+    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" })
   ]);
 
   function providerFor(value) {
@@ -95,23 +96,17 @@ jobs:
   function buildPlayerUrl(entry, autoplay = true) {
     const normalized = metadata.normalizeEntry(entry);
     const provider = providerFor(normalized.baseUrl);
+    let path;
     let url;
 
     if (provider.id === "ythd") {
-      const path = normalized.mode === "movie"
-        ? `/movie/${encodeURIComponent(normalized.id)}`
-        : `/tv/${encodeURIComponent(normalized.id)}`;
-      url = new URL(provider.baseUrl + path);
-
-      if (normalized.mode === "tv") {
-        url.searchParams.set("season", String(normalized.season));
-        url.searchParams.set("episode", String(normalized.episode));
-      }
-
-      return url.href;
+      path = normalized.mode === "movie"
+        ? `/${encodeURIComponent(normalized.id)}`
+        : `/${encodeURIComponent(normalized.id)}/${normalized.season}/${normalized.episode}`;
+      return new URL(provider.baseUrl + path).href;
     }
 
-    const path = normalized.mode === "movie"
+    path = normalized.mode === "movie"
       ? `/movie/${encodeURIComponent(normalized.id)}`
       : `/tv/${encodeURIComponent(normalized.id)}/${normalized.season}/${normalized.episode}`;
     url = new URL(provider.baseUrl + path);
@@ -122,14 +117,10 @@ jobs:
     return url.href;
   }
 
-  globalThis.VidCoreMetadata = Object.freeze({
-    ...metadata,
-    buildPlayerUrl
-  });
+  globalThis.VidCoreMetadata = Object.freeze({ ...metadata, buildPlayerUrl });
 
   function requestPause() {
-    const player = document.querySelector("#player");
-    player?.contentWindow?.postMessage(
+    document.querySelector("#player")?.contentWindow?.postMessage(
       { type: "VIDCORE_PLAYER_COMMAND", action: "pause" },
       "*"
     );
@@ -140,8 +131,8 @@ jobs:
     if (title) title.textContent = "Pause requested";
     if (text) {
       text.textContent = globalThis.chrome?.webview
-        ? "The native player sent pause into the active provider frame."
-        : "Pause was sent to the provider. Browser support depends on the embedded player.";
+        ? "The native player sent pause through the active provider frame."
+        : "Pause was sent to the provider; browser-only support depends on that provider.";
     }
     if (panel) panel.dataset.type = "ok";
   }
@@ -165,15 +156,186 @@ jobs:
 })();
 '''
 
+          storage_block = r'''  const BUILTIN_PROVIDERS = Object.freeze([
+    Object.freeze({ id: "vidcore", label: "VidCore", baseUrl: "https://vidcore.net" }),
+    Object.freeze({ id: "ythd", label: "YTHD", baseUrl: "https://ythd.org/embed" }),
+    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" })
+  ]);
+
+  function normalizeProviderUrl(value) {
+    try {
+      const parsed = new URL(String(value || "").trim());
+      return parsed.origin + parsed.pathname.replace(/\/+$/, "");
+    } catch {
+      return BUILTIN_PROVIDERS[0].baseUrl;
+    }
+  }
+
+  function providerCatalog(entries) {
+    const catalog = BUILTIN_PROVIDERS.map(provider => ({ ...provider }));
+    const known = new Set(catalog.map(provider => provider.baseUrl));
+
+    for (const entry of entries) {
+      const baseUrl = normalizeProviderUrl(entry?.baseUrl);
+      if (!known.has(baseUrl)) {
+        known.add(baseUrl);
+        catalog.push({
+          id: `custom-${catalog.length}`,
+          label: new URL(baseUrl).hostname,
+          baseUrl
+        });
+      }
+    }
+
+    return catalog;
+  }
+
+  function compactEntry(entry, providers) {
+    const baseUrl = normalizeProviderUrl(entry?.baseUrl);
+    const provider = Math.max(
+      0,
+      providers.findIndex(candidate => candidate.baseUrl === baseUrl)
+    );
+    const { baseUrl: ignoredBaseUrl, key: ignoredKey, provider: ignoredProvider, ...rest } = entry;
+    return provider === 0 ? rest : { ...rest, provider };
+  }
+
+  function recordKey(entry) {
+    const baseUrl = normalizeProviderUrl(entry.baseUrl);
+    return entry.mode === "tv"
+      ? `${baseUrl}|tv|${entry.id}|${entry.season ?? 1}|${entry.episode ?? 1}`
+      : `${baseUrl}|movie|${entry.id}`;
+  }
+
+  function expandEntry(entry, providers) {
+    if (!entry || typeof entry !== "object") return null;
+
+    let baseUrl = entry.baseUrl;
+    if (!baseUrl) {
+      const reference = Number.isInteger(entry.provider)
+        ? entry.provider
+        : Number.parseInt(entry.provider, 10);
+      baseUrl = providers[Number.isInteger(reference) ? reference : 0]?.baseUrl;
+    }
+
+    const expanded = {
+      ...entry,
+      baseUrl: normalizeProviderUrl(baseUrl)
+    };
+    delete expanded.provider;
+    expanded.key = recordKey(expanded);
+    return expanded;
+  }
+
+  function readProviderCatalog(payload) {
+    const source = Array.isArray(payload?.providers)
+      ? payload.providers
+      : Array.isArray(payload?.servers)
+        ? payload.servers
+        : [];
+
+    const catalog = source
+      .map((provider, index) => {
+        const value = typeof provider === "string"
+          ? provider
+          : provider?.baseUrl || provider?.url;
+        if (!value) return null;
+        const baseUrl = normalizeProviderUrl(value);
+        return {
+          id: provider?.id || `provider-${index}`,
+          label: provider?.label || new URL(baseUrl).hostname,
+          baseUrl
+        };
+      })
+      .filter(Boolean);
+
+    return catalog.length ? catalog : BUILTIN_PROVIDERS.map(provider => ({ ...provider }));
+  }
+
+  async function exportData(extra = {}) {
+    const [favorites, lists, history] = await Promise.all([
+      getAll(STORES.favorites),
+      getAll(STORES.lists),
+      getAll(STORES.history)
+    ]);
+    const providers = providerCatalog([...favorites, ...history]);
+
+    return {
+      format: "vidcore-native-library",
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      providers,
+      favorites: favorites.map(entry => compactEntry(entry, providers)),
+      lists,
+      history: history.map(entry => compactEntry(entry, providers)),
+      ...extra
+    };
+  }
+
+  async function importData(payload) {
+    if (!payload || typeof payload !== "object") {
+      throw new Error("Backup is not a JSON object.");
+    }
+
+    const providers = readProviderCatalog(payload);
+    const rawFavorites = Array.isArray(payload.favorites) ? payload.favorites : [];
+    const lists = Array.isArray(payload.lists) ? payload.lists : [];
+    const rawHistory = Array.isArray(payload.history) ? payload.history : [];
+    const favorites = rawFavorites.map(entry => expandEntry(entry, providers)).filter(Boolean);
+    const history = rawHistory.map(entry => expandEntry(entry, providers)).filter(Boolean);
+    const target = await backend();
+
+    for (const list of lists) {
+      if (list?.name) await target.put(STORES.lists, list);
+    }
+
+    if (!await target.get(STORES.lists, "Favorites")) {
+      await target.put(STORES.lists, {
+        name: "Favorites",
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    for (const entry of favorites) {
+      if (entry.key) await target.put(STORES.favorites, entry);
+    }
+
+    for (const entry of history) {
+      if (entry.key) await target.put(STORES.history, entry);
+    }
+
+    return {
+      favorites: favorites.length,
+      lists: lists.length,
+      history: history.length,
+      importedVersion: Number(payload.version) || 1
+    };
+  }
+'''
+
           for folder in ('VidCoreNativePlayer/assets', 'VidCoreWebPlayer'):
               folder_path = root / folder
               patch_html(folder_path / 'index.html')
-              (folder_path / 'providers.js').write_text(provider_script, encoding='utf-8', newline='\n')
+              (folder_path / 'providers.js').write_text(providers_js, encoding='utf-8', newline='\n')
+
+              storage = folder_path / 'storage.js'
+              storage_text = storage.read_text(encoding='utf-8')
+              pattern = re.compile(
+                  r'  async function exportData\(extra = \{\}\) \{.*?\n  async function importData\(payload\) \{.*?\n  \}\n\n  globalThis\.VidCoreStorage',
+                  re.S,
+              )
+              storage_text, count = pattern.subn(
+                  storage_block + '\n  globalThis.VidCoreStorage',
+                  storage_text,
+                  count=1,
+              )
+              if count != 1:
+                  raise RuntimeError(f'Storage export/import block not found in {storage}')
+              storage.write_text(storage_text, encoding='utf-8', newline='\n')
 
               styles = folder_path / 'styles.css'
               css = styles.read_text(encoding='utf-8')
-              marker = '/* v0.2.2 provider controls */'
-              if marker not in css:
+              if '/* v0.2.2 provider controls */' not in css:
                   css += '''\n\n/* v0.2.2 provider controls */
 @media (min-width: 1181px) {
   .source-panel {
@@ -181,14 +343,7 @@ jobs:
         minmax(210px, 1fr)
         96px
         minmax(120px, 0.42fr)
-        auto
-        auto
-        auto
-        auto
-        auto
-        auto
-        124px
-        auto;
+        auto auto auto auto auto auto 124px auto;
   }
 }
 '''
@@ -208,43 +363,36 @@ jobs:
         }
 
         for (const frame of document.querySelectorAll("iframe")) {
-            try {
-                frame.contentWindow?.postMessage(command, "*");
-            } catch {
-            }
+            try { frame.contentWindow?.postMessage(command, "*"); } catch {}
         }
 
         for (const media of document.querySelectorAll("video, audio")) {
-            try {
-                media.pause();
-            } catch {
-            }
+            try { media.pause(); } catch {}
         }
     }, true);
 '''
-              marker = '})();\n)JS";'
-              if marker not in webview_text:
-                  raise RuntimeError('Popup guard closing marker not found')
-              webview_text = webview_text.replace(marker, listener + '\n})();\n)JS";', 1)
+              webview_text = webview_text.replace(
+                  '})();\n)JS";',
+                  listener + '\n})();\n)JS";',
+                  1,
+              )
               webview.write_text(webview_text, encoding='utf-8', newline='\n')
 
           validate = root / 'VidCoreNativePlayer/validate.bat'
           validate_text = validate.read_text(encoding='utf-8')
-          if 'assets\\providers.js' not in validate_text:
-              validate_text = validate_text.replace(
-                  'node --check assets\\metadata.js\nif errorlevel 1 exit /b %errorlevel%\n',
-                  'node --check assets\\metadata.js\nif errorlevel 1 exit /b %errorlevel%\n\nnode --check assets\\providers.js\nif errorlevel 1 exit /b %errorlevel%\n',
-                  1,
-              )
-          if 'providers.test.mjs' not in validate_text:
-              validate_text = validate_text.replace(
-                  'node tests\\logic.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n',
-                  'node tests\\logic.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n\nnode tests\\providers.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n',
-                  1,
-              )
+          validate_text = validate_text.replace(
+              'node --check assets\\metadata.js\nif errorlevel 1 exit /b %errorlevel%\n',
+              'node --check assets\\metadata.js\nif errorlevel 1 exit /b %errorlevel%\n\nnode --check assets\\providers.js\nif errorlevel 1 exit /b %errorlevel%\n',
+              1,
+          )
+          validate_text = validate_text.replace(
+              'node tests\\logic.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n',
+              'node tests\\logic.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n\nnode tests\\providers.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n\nnode tests\\storage-format.test.mjs\nif errorlevel 1 exit /b %errorlevel%\n',
+              1,
+          )
           validate.write_text(validate_text, encoding='utf-8', newline='\n')
 
-          test = r'''import assert from "node:assert/strict";
+          provider_test = r'''import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -253,22 +401,14 @@ import { fileURLToPath } from "node:url";
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(directory, "..");
 const repositoryRoot = path.resolve(root, "..");
-const providerCode = fs.readFileSync(
-  path.join(root, "assets", "providers.js"),
-  "utf8"
-);
-
+const code = fs.readFileSync(path.join(root, "assets", "providers.js"), "utf8");
 const context = {
   URL,
-  document: {
-    readyState: "loading",
-    addEventListener() {},
-    querySelector() { return null; }
-  },
+  document: { readyState: "loading", addEventListener() {}, querySelector() { return null; } },
   VidCoreMetadata: {
     normalizeBaseUrl(value) {
       const parsed = new URL(String(value).trim());
-      return parsed.origin + parsed.pathname.replace(/\\/+$/, "");
+      return parsed.origin + parsed.pathname.replace(/\/+$/, "");
     },
     normalizeEntry(entry) {
       return {
@@ -282,119 +422,140 @@ const context = {
   }
 };
 vm.createContext(context);
-vm.runInContext(providerCode, context);
-
+vm.runInContext(code, context);
 assert.deepEqual(
   [...context.VidCoreProviders.providers].map(provider => provider.label),
   ["VidCore", "YTHD", "VidUp"]
 );
-
 const build = context.VidCoreMetadata.buildPlayerUrl;
-assert.equal(
-  build({ baseUrl: "https://vidcore.net", mode: "movie", id: "27205" }),
-  "https://vidcore.net/movie/27205?autoPlay=true&title=true&poster=true&fullscreenButton=true"
-);
-assert.equal(
-  build({ baseUrl: "https://ythd.org/embed", mode: "movie", id: "tt0466342" }),
-  "https://ythd.org/embed/movie/tt0466342"
-);
-assert.equal(
-  build({ baseUrl: "https://ythd.org/embed", mode: "tv", id: "1396", season: 2, episode: 3 }),
-  "https://ythd.org/embed/tv/1396?season=2&episode=3"
-);
-assert.equal(
-  build({ baseUrl: "https://vidup.to", mode: "tv", id: "1396", season: 2, episode: 3 }),
-  "https://vidup.to/tv/1396/2/3?autoPlay=true&title=true&poster=true&fullscreenButton=true"
-);
+assert.equal(build({ baseUrl: "https://vidcore.net", mode: "movie", id: "27205" }), "https://vidcore.net/movie/27205?autoPlay=true&title=true&poster=true&fullscreenButton=true");
+assert.equal(build({ baseUrl: "https://ythd.org/embed", mode: "movie", id: "tt0466342" }), "https://ythd.org/embed/tt0466342");
+assert.equal(build({ baseUrl: "https://ythd.org/embed", mode: "tv", id: "1396", season: 2, episode: 3 }), "https://ythd.org/embed/1396/2/3");
+assert.equal(build({ baseUrl: "https://vidup.to", mode: "tv", id: "1396", season: 2, episode: 3 }), "https://vidup.to/tv/1396/2/3?autoPlay=true&title=true&poster=true&fullscreenButton=true");
 
-for (const htmlPath of [
-  path.join(root, "assets", "index.html"),
-  path.join(repositoryRoot, "VidCoreWebPlayer", "index.html")
-]) {
+for (const htmlPath of [path.join(root, "assets", "index.html"), path.join(repositoryRoot, "VidCoreWebPlayer", "index.html")]) {
   const html = fs.readFileSync(htmlPath, "utf8");
-  const vidcore = html.indexOf('>VidCore</option>');
-  const ythd = html.indexOf('>YTHD</option>');
-  const vidup = html.indexOf('>VidUp</option>');
-  assert.ok(vidcore >= 0 && vidcore < ythd && ythd < vidup);
-  assert.match(
-    html,
-    /id="playButton"[^>]*>Play<\\/button>\\s*<button id="pauseButton"[^>]*>Pause<\\/button>/
-  );
-  assert.ok(
-    html.indexOf('src="metadata.js"') < html.indexOf('src="providers.js"') &&
-    html.indexOf('src="providers.js"') < html.indexOf('src="scanner.js"')
-  );
+  const a = html.indexOf('>VidCore</option>');
+  const b = html.indexOf('>YTHD</option>');
+  const c = html.indexOf('>VidUp</option>');
+  assert.ok(a >= 0 && a < b && b < c);
+  assert.match(html, /id="playButton"[^>]*>Play<\/button>\s*<button id="pauseButton"[^>]*>Pause<\/button>/);
+  assert.ok(html.indexOf('src="metadata.js"') < html.indexOf('src="providers.js"'));
 }
-
-const webview = fs.readFileSync(
-  path.join(root, "src", "vidcore.webview.ixx"),
-  "utf8"
-);
+const webview = fs.readFileSync(path.join(root, "src", "vidcore.webview.ixx"), "utf8");
 assert.match(webview, /VIDCORE_PLAYER_COMMAND/);
-assert.match(webview, /media\\.pause\\(\\)/);
-
+assert.match(webview, /media\.pause\(\)/);
 console.log("Provider routing and pause-control checks passed.");
 '''
-          (root / 'VidCoreNativePlayer/tests/providers.test.mjs').write_text(
-              test,
-              encoding='utf-8',
-              newline='\n',
-          )
+          (root / 'VidCoreNativePlayer/tests/providers.test.mjs').write_text(provider_test, encoding='utf-8', newline='\n')
 
-          replace_once(
-              root / 'VidCoreNativePlayer/CMakeLists.txt',
-              'VERSION 0.2.1',
-              'VERSION 0.2.2',
-          )
+          storage_test = r'''import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import { fileURLToPath } from "node:url";
+
+const directory = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(directory, "..");
+const code = fs.readFileSync(path.join(root, "assets", "storage.js"), "utf8");
+const stores = new Map();
+const localStorage = {
+  getItem(key) { return stores.has(key) ? stores.get(key) : null; },
+  setItem(key, value) { stores.set(key, String(value)); }
+};
+const context = { URL, localStorage, indexedDB: undefined, console, setTimeout, clearTimeout };
+context.globalThis = context;
+vm.createContext(context);
+vm.runInContext(code, context);
+await context.VidCoreStorage.initialize();
+const S = context.VidCoreStorage.STORES;
+await context.VidCoreStorage.put(S.favorites, {
+  key: "https://ythd.org/embed|movie|tt0466342",
+  baseUrl: "https://ythd.org/embed",
+  mode: "movie",
+  id: "tt0466342",
+  title: "Date Movie",
+  list: "Favorites"
+});
+const backup = await context.VidCoreStorage.exportData();
+assert.equal(backup.version, 2);
+assert.deepEqual(backup.providers.slice(0, 3).map(provider => provider.id), ["vidcore", "ythd", "vidup"]);
+assert.equal(backup.favorites[0].provider, 1);
+assert.equal("baseUrl" in backup.favorites[0], false);
+assert.equal("key" in backup.favorites[0], false);
+
+await context.VidCoreStorage.clear(S.favorites);
+await context.VidCoreStorage.importData({
+  format: "vidcore-native-library",
+  version: 1,
+  favorites: [{
+    key: "https://vidup.to|movie|550",
+    baseUrl: "https://vidup.to",
+    mode: "movie",
+    id: "550",
+    title: "Fight Club",
+    list: "Favorites"
+  }],
+  lists: [],
+  history: []
+});
+let imported = await context.VidCoreStorage.getAll(S.favorites);
+assert.equal(imported[0].baseUrl, "https://vidup.to");
+
+await context.VidCoreStorage.clear(S.favorites);
+await context.VidCoreStorage.importData(backup);
+imported = await context.VidCoreStorage.getAll(S.favorites);
+assert.equal(imported[0].baseUrl, "https://ythd.org/embed");
+console.log("Compact provider backup and legacy import checks passed.");
+'''
+          (root / 'VidCoreNativePlayer/tests/storage-format.test.mjs').write_text(storage_test, encoding='utf-8', newline='\n')
+
+          replace_once(root / 'VidCoreNativePlayer/CMakeLists.txt', 'VERSION 0.2.1', 'VERSION 0.2.2')
           (root / 'VERSION').write_text('0.2.2\n', encoding='utf-8', newline='\n')
 
-          root_readme = root / 'README.md'
-          readme_text = root_readme.read_text(encoding='utf-8')
-          if 'VidCore, YTHD, and VidUp' not in readme_text:
-              readme_text = readme_text.replace(
-                  '## Current corrections\n',
-                  '## Current corrections\n\n- Provider choices are VidCore, YTHD, and VidUp in that order.\n- Pause sits directly beside Play; the native player injects pause through nested provider frames.\n',
-                  1,
-              )
-          root_readme.write_text(readme_text, encoding='utf-8', newline='\n')
-
-          for readme_path in [
-              root / 'VidCoreNativePlayer/README.md',
-              root / 'VidCoreWebPlayer/README.md',
-          ]:
-              text = readme_path.read_text(encoding='utf-8')
-              title_end = text.find('\n') + 1
-              section = '''\n## v0.2.2 providers and playback controls\n\n- Provider selector order: VidCore, YTHD, VidUp.\n- Provider-aware movie and TV URL routing.\n- Pause button placed directly beside Play.\n- The native build injects pause into nested cross-origin provider frames.\n\n'''
-              if '## v0.2.2 providers and playback controls' not in text:
-                  text = text[:title_end] + section + text[title_end:]
-              readme_path.write_text(text, encoding='utf-8', newline='\n')
+          for readme in [root / 'README.md', root / 'VidCoreNativePlayer/README.md', root / 'VidCoreWebPlayer/README.md']:
+              text = readme.read_text(encoding='utf-8')
+              if 'compact provider-indexed backups' not in text:
+                  text += '\n## v0.2.2\n\n- Provider order: VidCore, YTHD, VidUp.\n- Pause is directly beside Play.\n- Saved cards retain their own provider while the main Play uses the currently selected provider.\n- New JSON backups use compact provider-indexed backups and still import the version 1 full-URL format.\n'
+              readme.write_text(text, encoding='utf-8', newline='\n')
 
           mission = root / 'missioncache.md'
-          mission_text = mission.read_text(encoding='utf-8')
-          additions = '''- [x] Add VidCore, YTHD, and VidUp provider choices in that order to both players.\n- [x] Add provider-aware movie and TV embed URL construction.\n- [x] Add Pause directly beside Play in both players.\n- [x] Inject recursive media pause handling into native WebView2 provider frames.\n- [x] Add provider-routing and pause-control validation coverage.\n- [x] Publish release `v0.2.2` with refreshed native and web-player assets.\n\n'''
-          if 'Add VidCore, YTHD, and VidUp provider choices' not in mission_text:
-              mission_text = mission_text.replace('## Open / provider-limited\n', additions + '## Open / provider-limited\n', 1)
-          mission.write_text(mission_text, encoding='utf-8', newline='\n')
+          text = mission.read_text(encoding='utf-8')
+          items = '''- [x] Add VidCore, YTHD, and VidUp provider choices in that order to both players.
+- [x] Add provider-aware movie and TV URL construction.
+- [x] Add Pause directly beside Play in both players.
+- [x] Make main Play use the selected provider and saved-card Play use each title's saved provider.
+- [x] Add compact version 2 backups with provider categories stored once and per-title provider indexes.
+- [x] Preserve import compatibility with version 1 backups containing full `baseUrl` values.
+- [x] Add provider, pause, compact-backup, and legacy-import validation.
+- [ ] Publish release `v0.2.2` with refreshed native and web-player assets.
+
+'''
+          if 'compact version 2 backups' not in text:
+              text = text.replace('## Open / provider-limited\n', items + '## Open / provider-limited\n', 1)
+          mission.write_text(text, encoding='utf-8', newline='\n')
 
           release = root / '.github/workflows/release.yml'
-          release_text = release.read_text(encoding='utf-8')
-          if 'VidCore, YTHD, and VidUp provider selector' not in release_text:
-              release_text = release_text.replace(
-                  '          - Stronger Wikidata and Wikipedia artwork repair\n',
-                  '          - Stronger Wikidata and Wikipedia artwork repair\n          - VidCore, YTHD, and VidUp provider selector\n          - Pause control directly beside Play\n',
-                  1,
-              )
-          release.write_text(release_text, encoding='utf-8', newline='\n')
+          text = release.read_text(encoding='utf-8')
+          text = text.replace(
+              '          - Stronger Wikidata and Wikipedia artwork repair\n',
+              '          - Stronger Wikidata and Wikipedia artwork repair\n          - VidCore, YTHD, and VidUp provider choices\n          - Pause control directly beside Play\n          - Compact provider-indexed backups with version 1 import compatibility\n',
+              1,
+          )
+          release.write_text(text, encoding='utf-8', newline='\n')
           PY
 
-      - name: Validate JavaScript and tests
+      - name: Validate update
         shell: bash
         run: |
+          node --check VidCoreNativePlayer/assets/storage.js
           node --check VidCoreNativePlayer/assets/providers.js
+          node --check VidCoreWebPlayer/storage.js
           node --check VidCoreWebPlayer/providers.js
           node VidCoreNativePlayer/tests/static-smoke.test.mjs
           node VidCoreNativePlayer/tests/logic.test.mjs
           node VidCoreNativePlayer/tests/providers.test.mjs
+          node VidCoreNativePlayer/tests/storage-format.test.mjs
 
       - name: Commit update
         shell: bash
@@ -403,5 +564,5 @@ console.log("Provider routing and pause-control checks passed.");
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'Add providers and pause control'
+          git commit -m 'Add provider-aware playback and compact backups'
           git push
