@@ -15,6 +15,9 @@
 - [x] Preserve named lists, notes, watched state, filtering, Continue Watching, recommendations, related titles, and JSON backup.
 - [x] Preserve build, run, clean, and validation scripts for the native project.
 - [x] Add a localhost run script for the web project.
+- [x] Add a repeatable Windows release workflow driven by the root `VERSION` file.
+- [x] Validate and build the native C++23 project with Visual Studio 2022 on GitHub Actions.
+- [x] Publish release `v0.2.1` with separate native Windows x64 and web-player ZIPs plus SHA-256 checksums.
 
 ## Open / provider-limited
 
