@@ -67,6 +67,13 @@
 - [x] Reconcile the latest supplied backup so all 108 built-in default titles remain included without overwriting user edits.
 - [x] Publish release `v0.2.7` with the swapped top sections and list management cleanup.
 
+
+- [x] Merge every supplied August 4 backup as a union instead of replacing one backup with another.
+- [x] Preserve all 111 provider-aware saved entries and all 25 named lists in built-in defaults.
+- [x] Add Reacher, Dexter: Resurrection, The Sandman, and the Fantasy list while retaining Wednesday, Landman, and Mating Season.
+- [x] Keep built-in history empty so a fresh install does not start with fabricated Continue Watching activity.
+- [x] Publish release `v0.2.8` with the complete merged default union.
+
 ## Open / provider-limited
 
 - [ ] Restore IMDb-first/TMDB-second official artwork through a signed or independently verified implementation that does not trigger Defender.
