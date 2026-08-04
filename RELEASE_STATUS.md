@@ -1,7 +1,7 @@
 # Release Status
 
-- Version: v0.2.8
+- Version: v0.2.9
 - Status: success
-- Run: https://github.com/Autodidac/VidCoreSteralizerDesktop/actions/runs/30932015912
-- Source commit: 4a857f1e7d58002e49c7abcc4599d1087d88b586
-- Release: https://github.com/Autodidac/VidCoreSteralizerDesktop/releases/tag/v0.2.8
+- Run: https://github.com/Autodidac/VidCoreSteralizerDesktop/actions/runs/30940456227
+- Source commit: 5c0d5df096ea007a89e5d4791cca515c967d1d44
+- Release: https://github.com/Autodidac/VidCoreSteralizerDesktop/releases/tag/v0.2.9

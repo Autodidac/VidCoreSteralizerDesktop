@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(
     VidCoreNativePlayer
-    VERSION 0.2.8
+    VERSION 0.2.9
     DESCRIPTION "C++23 modular WebView2 streaming player with native popup interception"
     LANGUAGES CXX
 )
@@ -61,6 +61,7 @@ target_sources(
             src/vidcore.config.ixx
             src/vidcore.uri.ixx
             src/vidcore.blocklist.ixx
+            src/vidcore.artwork_resolver.ixx
             src/vidcore.webview.ixx
             src/vidcore.application.ixx
 )
