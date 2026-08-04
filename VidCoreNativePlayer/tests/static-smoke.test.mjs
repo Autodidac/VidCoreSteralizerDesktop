@@ -13,9 +13,6 @@ const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
   "utf8"
 );
-  path.join(root, "src", "vidcore.image_cache.ixx"),
-  "utf8"
-);
 
 for (const id of [
   "previousButton",
@@ -84,15 +81,8 @@ assert.match(webview, /external-denied/);
 assert.match(webview, /fastflix\.to/);
 assert.match(webview, /123moviesfree\.net/);
 assert.match(webview, /executable_directory/);
-
-console.log("Static feature, metadata-repair, and popup-shield checks passed.");
-
-
-assert.match(app, /preferOfficialArtwork/);
 assert.doesNotMatch(webview, /blocked-count/);
-assert.match(imageCache, /v2\.sg\.media-imdb\.com/);
-assert.match(imageCache, /themoviedb\.org/);
-assert.match(cmake, /vidcore\.image_cache\.ixx/);
-
 assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
 assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);
+
+console.log("Static feature, metadata-repair, popup-shield, and Defender-safe host checks passed.");
