@@ -79,9 +79,17 @@ assert.match(app, /async function deleteSelectedList/);
 assert.match(app, /VidCoreStorage\.remove\(VidCoreStorage\.STORES\.lists, name\)/);
 assert.match(app, /list: "Favorites"/);
 assert.match(app, /staleEmptyLists/);
-for (const title of ["Wednesday", "Landman", "Mating Season"]) {
-  assert.match(additions, new RegExp(`title: "${title}"`));
+for (const title of [
+  "Wednesday",
+  "Landman",
+  "Mating Season",
+  "Reacher",
+  "Dexter: Resurrection",
+  "The Sandman"
+]) {
+  assert.match(additions, new RegExp(`"title": "${title.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"`));
 }
+assert.match(additions, /"name": "Fantasy"/);
 
 assert.match(webview, /NewWindowRequested/);
 assert.match(webview, /AddScriptToExecuteOnDocumentCreated/);
@@ -94,4 +102,4 @@ assert.doesNotMatch(webview, /blocked-count/);
 assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
 assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);
 
-console.log("Static feature, metadata-repair, popup-shield, and Defender-safe host checks passed.");
+console.log("Static feature, merged defaults, popup-shield, and Defender-safe host checks passed.");
