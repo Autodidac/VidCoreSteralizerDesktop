@@ -61,7 +61,6 @@ target_sources(
             src/vidcore.config.ixx
             src/vidcore.uri.ixx
             src/vidcore.blocklist.ixx
-            src/vidcore.image_cache.ixx
             src/vidcore.webview.ixx
             src/vidcore.application.ixx
 )
@@ -109,7 +108,6 @@ target_link_libraries(
         oleaut32
         shell32
         shlwapi
-        winhttp
         dwmapi
         version
 )

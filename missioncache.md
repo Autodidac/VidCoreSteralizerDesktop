@@ -45,14 +45,7 @@
 - [x] Publish release `v0.2.5` with artwork validation, external catalog links, top provider controls, corrected formatting, and portable storage.
 
 
-- [x] Resolve artwork from IMDb title/media imagery first instead of using Wikipedia as the primary image source.
-- [x] Use TMDB title/backdrop imagery as the second official artwork source.
 - [x] Keep strict Wikidata, Wikipedia, and Wikimedia Commons artwork only as fallback sources.
-- [x] Cache resolved native artwork in `cache/` beside the executable with readable media-based filenames.
-- [x] Reuse one cached image across VidCore, YTHD, and VidUp provider selections.
-- [x] Reuse cached artwork without repeating IMDb/TMDB requests while the title remains saved.
-- [x] Delete cached artwork when the final saved library copy is removed.
-- [x] Prune orphaned cache images at startup and after backup import.
 
 
 - [x] Rename the visible application and native window to `Shielded Native Stream Player`.
@@ -64,9 +57,15 @@
 - [x] Add Wednesday, Landman, and Mating Season from the latest backup to built-in defaults without overwriting user edits.
 - [x] Preserve non-destructive seed merging so deleted defaults stay deleted and only unseen defaults are added.
 - [x] Publish release `v0.2.6` with the completed compact blue redesign and refreshed defaults.
+- [x] Remove the native WinHTTP page scraper/downloader and automatic cache-file deletion from the shipping executable after a Windows Defender detection report.
+- [x] Keep WebView2 profile data and its normal browser cache under `data/` beside the executable.
+- [x] Add a Windows Defender scan report and a source-build ZIP to the release artifacts.
 
 ## Open / provider-limited
 
+- [ ] Restore IMDb-first/TMDB-second official artwork through a signed or independently verified implementation that does not trigger Defender.
+- [ ] Restore readable `cache/<media>.jpg` lifecycle only after the implementation passes Microsoft Defender analysis.
+- [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
 - [ ] Provider availability and stream quality remain controlled by the configured provider.
 - [ ] A browser page cannot inject popup protection into a cross-origin provider iframe.

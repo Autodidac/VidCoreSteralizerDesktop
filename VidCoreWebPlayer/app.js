@@ -130,26 +130,9 @@
   }
 
   function requestNativeArtwork(entry, metadata = entry) {
-    if (!globalThis.chrome?.webview) {
-      return Promise.resolve("");
-    }
-
-    const requestId = String(++state.artworkSequence);
-    return new Promise(resolve => {
-      const timer = setTimeout(() => {
-        state.artworkRequests.delete(requestId);
-        resolve("");
-      }, 18000);
-      state.artworkRequests.set(requestId, { resolve, timer });
-      postHost([
-        "resolve-image",
-        requestId,
-        entry.mode === "tv" ? "tv" : "movie",
-        entry.id || "",
-        metadata?.imdb || "",
-        metadata?.tmdb || ""
-      ].join("|"));
-    });
+    void entry;
+    void metadata;
+    return Promise.resolve("");
   }
 
   async function preferOfficialArtwork(entry, metadata) {
@@ -168,14 +151,7 @@
   }
 
   async function pruneNativeArtworkCache() {
-    if (!state.storageReady || !globalThis.chrome?.webview) return;
-    const favorites = await VidCoreStorage.getAll(
-      VidCoreStorage.STORES.favorites
-    );
-    const identities = [...new Set(
-      favorites.map(entry => mediaCacheIdentity(entry, entry))
-    )];
-    postHost(`prune-image-cache|${identities.join(",")}`);
+    // WebView2 owns its browser cache under data/ beside the executable.
   }
 
   function setStatus(title, text, type = "") {

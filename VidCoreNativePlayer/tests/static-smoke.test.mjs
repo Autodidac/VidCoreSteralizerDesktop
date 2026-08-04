@@ -13,11 +13,9 @@ const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
   "utf8"
 );
-const imageCache = fs.readFileSync(
   path.join(root, "src", "vidcore.image_cache.ixx"),
   "utf8"
 );
-const cmake = fs.readFileSync(path.join(root, "CMakeLists.txt"), "utf8");
 
 for (const id of [
   "previousButton",
@@ -90,16 +88,11 @@ assert.match(webview, /executable_directory/);
 console.log("Static feature, metadata-repair, and popup-shield checks passed.");
 
 
-assert.match(app, /resolve-image/);
-assert.match(app, /prune-image-cache/);
-assert.match(app, /delete-image-cache/);
 assert.match(app, /preferOfficialArtwork/);
-assert.match(webview, /ImageCache/);
-assert.match(webview, /image-resolved/);
 assert.doesNotMatch(webview, /blocked-count/);
-assert.match(imageCache, /media-imdb/);
 assert.match(imageCache, /v2\.sg\.media-imdb\.com/);
 assert.match(imageCache, /themoviedb\.org/);
-assert.match(imageCache, /WinHttpOpen/);
 assert.match(cmake, /vidcore\.image_cache\.ixx/);
-assert.match(cmake, /winhttp/);
+
+assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
+assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);

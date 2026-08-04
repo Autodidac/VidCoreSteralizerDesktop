@@ -1,7 +1,6 @@
 module;
 
 #include <algorithm>
-#include <array>
 #include <filesystem>
 #include <functional>
 #include <string>
@@ -17,7 +16,6 @@ module;
 export module vidcore.webview;
 
 import vidcore.blocklist;
-import vidcore.image_cache;
 import vidcore.uri;
 
 export namespace vidcore {
@@ -393,51 +391,6 @@ private:
             return;
         }
 
-
-
-        if (command == L"resolve-image") {
-            std::array<std::wstring, 5> fields{};
-            std::size_t field_index = 0;
-            std::size_t start = 0;
-            while (field_index < fields.size()) {
-                const auto next = payload.find(L'|', start);
-                fields[field_index++] = payload.substr(
-                    start,
-                    next == std::wstring::npos
-                        ? std::wstring::npos
-                        : next - start
-                );
-                if (next == std::wstring::npos) break;
-                start = next + 1;
-            }
-
-            const auto result = image_cache_.resolve(
-                fields[1],
-                fields[2],
-                fields[3],
-                fields[4]
-            );
-            if (result) {
-                post_event(
-                    L"image-resolved|" + fields[0] + L"|" +
-                    uri::file_url(result->path) + L"|" + result->source
-                );
-            } else {
-                post_event(L"image-resolved|" + fields[0] + L"||none");
-            }
-            return;
-        }
-
-        if (command == L"delete-image-cache") {
-            image_cache_.remove(payload);
-            return;
-        }
-
-        if (command == L"prune-image-cache") {
-            image_cache_.prune(payload);
-            return;
-        }
-
         if (command == L"mute") {
             const bool mute = payload == L"1";
             Microsoft::WRL::ComPtr<ICoreWebView2_8> media;
@@ -544,7 +497,6 @@ private:
     std::filesystem::path assets_index_;
     std::wstring home_url_;
     PopupBlocklist blocklist_;
-    ImageCache image_cache_{executable_directory() / L"cache"};
     ErrorHandler error_handler_;
 
     Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment_;
