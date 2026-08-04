@@ -87,9 +87,9 @@ for (const title of [
   "Dexter: Resurrection",
   "The Sandman"
 ]) {
-  assert.match(additions, new RegExp(`"title": "${title.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"`));
+  assert.ok(additions.includes(`"title": "${title}"`));
 }
-assert.match(additions, /"name": "Fantasy"/);
+assert.ok(additions.includes('"name": "Fantasy"'));
 
 assert.match(webview, /NewWindowRequested/);
 assert.match(webview, /AddScriptToExecuteOnDocumentCreated/);
