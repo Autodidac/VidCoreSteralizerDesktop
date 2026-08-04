@@ -21,13 +21,45 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply and commit staged source update
+        shell: pwsh
+        run: |
+          if (Test-Path '.github/scripts/apply-v0.2.2.py') {
+            python .github/scripts/apply-v0.2.2.py
+            if ($LASTEXITCODE -ne 0) {
+              throw "The v0.2.2 source update failed with exit code $LASTEXITCODE."
+            }
+
+            Remove-Item '.provider-update-trigger' -Force -ErrorAction SilentlyContinue
+            Remove-Item 'provider-update-trigger.txt' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/workflows/provider-update.yml' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts/apply-v0.2.2.py' -Force -ErrorAction SilentlyContinue
+            Remove-Item '.github/scripts' -Force -ErrorAction SilentlyContinue
+
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -A
+            git diff --cached --quiet
+            if ($LASTEXITCODE -ne 0) {
+              git commit -m 'Add provider-aware playback and compact backups'
+              if ($LASTEXITCODE -ne 0) { throw 'Source commit failed.' }
+              git push
+              if ($LASTEXITCODE -ne 0) { throw 'Source push failed.' }
+            }
+          }
+
+          $target = (git rev-parse HEAD).Trim()
+          "RELEASE_TARGET=$target" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Read and validate version
         shell: pwsh
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.1."
+            throw "VERSION must contain a semantic version such as 0.2.2."
           }
 
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
@@ -80,16 +112,21 @@ jobs:
 
           This release contains both maintained players in separate downloads.
 
-          ### Native Windows player
-          - C++23 modules, Win32, and WebView2
-          - Native popup, new-window, and navigation-hijack interception
-          - Database Pick is the default discovery mode
-          - Permanent Favorites list and dedicated Favorites tab
-          - Delete moved into the Edit window
-          - Stronger Wikidata and Wikipedia artwork repair
+          ### Playback and providers
+          - Provider selector order: VidCore, YTHD, VidUp
+          - Main Play uses the currently selected provider
+          - Saved-card Play uses that title's saved default provider
+          - Pause is directly beside Play
+          - Native WebView2 injects recursive pause handling into provider frames
 
-          ### Web player
-          - Standalone browser version with the same metadata, discovery, lists, Continue Watching, recommendations, and related-title workflow
+          ### Library backups
+          - Version 2 JSON stores provider categories once and uses compact per-title provider indexes
+          - Version 1 backups containing full `baseUrl` values remain import-compatible
+
+          ### Existing features
+          - Native popup, new-window, and navigation-hijack interception
+          - Database Pick discovery, permanent Favorites, Continue Watching, recommendations, and related titles
+          - Wikidata and Wikipedia artwork repair
 
           ### Assets
           - `VidCoreNativePlayer-v$env:VERSION-windows-x64.zip`
@@ -111,7 +148,7 @@ jobs:
 
           gh release create $env:TAG `
             --repo $env:GITHUB_REPOSITORY `
-            --target $env:GITHUB_SHA `
+            --target $env:RELEASE_TARGET `
             --title "VidCore Steralizer Desktop $env:TAG" `
             --notes-file dist/RELEASE_NOTES.md `
             --latest `
@@ -123,15 +160,17 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $version = (Get-Content VERSION -Raw).Trim()
+          $version = if ($env:VERSION) { $env:VERSION } else { (Get-Content VERSION -Raw).Trim() }
           $status = '${{ job.status }}'
+          $target = if ($env:RELEASE_TARGET) { $env:RELEASE_TARGET } else { $env:GITHUB_SHA }
           @"
           # Release Status
 
           - Version: v$version
           - Status: $status
-          - Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          - Source commit: ${{ github.sha }}
+          - Run: https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
+          - Source commit: $target
+          - Release: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/v$version
           "@ | Set-Content RELEASE_STATUS.md -Encoding utf8
 
           git config user.name 'github-actions[bot]'
