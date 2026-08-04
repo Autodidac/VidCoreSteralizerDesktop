@@ -1,0 +1,210 @@
+source_match = re.search(r'        <section class="source-panel panel">.*?        </section>\n\n', index, re.S)
+if source_match is None:
+    raise RuntimeError("Could not find source panel block")
+source_block = source_match.group(0)
+index = index[:source_match.start()] + index[source_match.end():]
+player_anchor = '        <section id="playerShell" class="player-shell panel">'
+index = replace_once(index, player_anchor, source_block + player_anchor, "provider panel to top")
+index = replace_once(
+    index,
+    '            <button id="wikipediaButton" class="button hidden">Wikipedia</button>',
+    '''            <button id="wikipediaButton" class="button hidden">Wikipedia</button>
+            <button id="fastflixButton" class="button hidden">FastFlix</button>
+            <button id="seeflixButton" class="button hidden">SeeFlix</button>
+            <button id="movies123Button" class="button hidden">123Movies</button>''',
+    "current external buttons",
+)
+index = index.replace(
+    "Learned hosts persist under Local AppData.",
+    "Learned hosts persist in the portable data folder beside the executable.",
+)
+index = index.replace(
+    "Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available.",
+    "Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable.",
+)
+write(index_path, index)
+
+# ---------------------------------------------------------------------------
+# Responsive layout and correct poster scaling.
+# ---------------------------------------------------------------------------
+styles_path = NATIVE / "assets" / "styles.css"
+styles = read(styles_path)
+styles = styles.replace(
+    "  grid-template-columns: minmax(0, 1fr) 410px;",
+    "  grid-template-columns: minmax(0, 1fr) 440px;",
+    1,
+)
+styles = regex_once(
+    styles,
+    r"\.source-panel \{.*?\n\}",
+    '''.source-panel {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 11px;
+}
+
+.source-panel .provider-field { grid-column: span 2; }
+.source-panel .mode-field { grid-column: span 1; }
+.source-panel .id-field { grid-column: span 2; }
+.source-panel .number-field { grid-column: span 1; }
+.source-panel .button { grid-column: span 1; min-width: 0; }
+.source-panel .random-mode {
+  grid-column: span 2;
+  align-self: end;
+  min-height: 42px;
+}''',
+    "source panel layout",
+)
+styles = regex_once(
+    styles,
+    r"\.current-card \{.*?\n\}",
+    '''.current-card {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) minmax(210px, 238px);
+  align-items: start;
+  gap: 16px;
+  min-height: 214px;
+  margin-bottom: 14px;
+  padding: 14px;
+}''',
+    "current card layout",
+)
+styles = styles.replace(
+    "  width: 118px;\n  min-height: 138px;",
+    "  width: 132px;\n  min-height: 198px;\n  aspect-ratio: 2 / 3;",
+    1,
+)
+styles = styles.replace(
+    "  object-fit: cover;",
+    "  object-fit: contain;",
+    1,
+)
+styles = regex_once(
+    styles,
+    r"\.current-actions \{.*?\n\}",
+    '''.current-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 7px;
+  width: 100%;
+}''',
+    "current actions grid",
+)
+styles = styles.replace(
+    "  min-width: 105px;",
+    "  min-width: 0;\n  white-space: normal;",
+    1,
+)
+styles = styles.replace(
+    "  grid-template-columns: 74px minmax(0, 1fr);\n  min-height: 104px;",
+    "  grid-template-columns: 88px minmax(0, 1fr);\n  align-items: start;",
+    1,
+)
+styles = styles.replace(
+    "  min-height: 104px;\n  place-items: center;",
+    "  min-height: 132px;\n  aspect-ratio: 2 / 3;\n  place-items: center;",
+    1,
+)
+# Replace the second object-fit declaration (card poster) after current poster changed.
+styles = styles.replace(
+    ".card-poster img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n}",
+    ".card-poster img {\n  width: 100%;\n  height: 100%;\n  object-fit: contain;\n}",
+    1,
+)
+styles = regex_once(
+    styles,
+    r"\.card-actions \{.*?\n\}",
+    '''.card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 9px;
+}''',
+    "card actions grid",
+)
+styles = styles.replace(
+    "  font-size: 11px;\n}",
+    "  min-width: 0;\n  white-space: normal;\n  font-size: 11px;\n}",
+    1,
+)
+# Replace obsolete provider media override at file end.
+styles = re.sub(
+    r"\n/\* v0\.2\.2 provider controls \*/.*?\Z",
+    '''
+
+/* v0.2.5 responsive provider and card formatting */
+@media (max-width: 1320px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) 390px; }
+  .source-panel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .source-panel .provider-field,
+  .source-panel .id-field,
+  .source-panel .random-mode { grid-column: span 2; }
+}
+
+@media (max-width: 1080px) {
+  .workspace { grid-template-columns: 1fr; }
+  .sidebar { position: static; min-height: auto; }
+  .side-panel { max-height: 560px; }
+  .current-card { grid-template-columns: 118px minmax(0, 1fr); }
+  .current-poster { width: 118px; min-height: 177px; }
+  .current-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+''',
+    styles,
+    flags=re.S,
+)
+write(styles_path, styles)
+
+# ---------------------------------------------------------------------------
+# Portable native data/cache and trusted external sites.
+# ---------------------------------------------------------------------------
+blocklist_path = NATIVE / "src" / "vidcore.blocklist.ixx"
+blocklist = read(blocklist_path)
+blocklist = regex_once(
+    blocklist,
+    r"    \[\[nodiscard\]\] static std::filesystem::path resolve_directory\(\) \{.*?\n    \}",
+    '''    [[nodiscard]] static std::filesystem::path resolve_directory() {
+        std::wstring module_path(32768, L'\\0');
+        const auto length = GetModuleFileNameW(
+            nullptr,
+            module_path.data(),
+            static_cast<DWORD>(module_path.size())
+        );
+
+        std::filesystem::path executable_directory;
+        if (length > 0 && length < module_path.size()) {
+            module_path.resize(length);
+            executable_directory = std::filesystem::path{module_path}.parent_path();
+        } else {
+            executable_directory = std::filesystem::current_path();
+        }
+
+        return executable_directory / L"data";
+    }''',
+    "portable blocklist directory",
+)
+write(blocklist_path, blocklist)
+
+webview_path = NATIVE / "src" / "vidcore.webview.ixx"
+webview = read(webview_path)
+webview = replace_once(
+    webview,
+    '          assets_index_{std::filesystem::current_path() / L"assets" / L"index.html"},',
+    '          assets_index_{executable_directory() / L"assets" / L"index.html"},',
+    "assets beside executable",
+)
+webview = replace_once(
+    webview,
+    "private:\n    static constexpr std::wstring_view popup_guard_script",
+    '''private:
+    [[nodiscard]] static std::filesystem::path executable_directory() {
+        std::wstring module_path(32768, L'\\0');
+        const auto length = GetModuleFileNameW(
+            nullptr,
