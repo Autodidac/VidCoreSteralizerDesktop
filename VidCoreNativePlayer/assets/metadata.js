@@ -551,6 +551,14 @@
   function mergeWikipedia(entry, metadata, wikipedia) {
     if (!wikipedia) return metadata;
 
+    const wikipediaImage = isLikelyBadArtwork(
+      entry,
+      metadata,
+      wikipedia.imageName || wikipedia.image
+    )
+      ? ""
+      : wikipedia.image || "";
+
     return {
       ...metadata,
       title: isGenericTitle(entry, metadata.title)
@@ -558,12 +566,8 @@
         : metadata.title,
       description: metadata.description || wikipedia.description || "",
       image: isLikelyBadArtwork(entry, metadata, metadata.image)
-        ? selectArtworkImage(entry, metadata, [
-            { kind: "image", value: wikipedia.imageName || wikipedia.image }
-          ]) || (!isLikelyBadArtwork(entry, metadata, wikipedia.image) ? wikipedia.image : "")
-        : metadata.image || (!isLikelyBadArtwork(entry, metadata, wikipedia.imageName || wikipedia.image)
-          ? wikipedia.image
-          : ""),
+        ? wikipediaImage
+        : metadata.image || wikipediaImage,
       wikipedia: wikipedia.wikipedia || metadata.article || "",
       resolutionStatus: metadata.wikidata || wikipedia.title
         ? "resolved"

@@ -143,6 +143,19 @@ const catalogs = metadata.externalCatalogUrls(
 assert.match(catalogs.fastflix, /fastflix\.to\/tvshows\/mating-season/);
 assert.match(catalogs.seeflix, /seeflix\.to\/mating-season/);
 assert.match(catalogs.movies123, /123moviesfree\.net\/search\/mating-season/);
+const wikipediaMerge = metadata.mergeWikipedia(
+  { mode: "movie", id: "1", title: "Example Film" },
+  { title: "Example Film", image: "", resolutionStatus: "resolved" },
+  {
+    title: "Example Film",
+    imageName: "Example Film poster.jpg",
+    image: "https://upload.wikimedia.org/example-film-poster.jpg"
+  }
+);
+assert.equal(
+  wikipediaMerge.image,
+  "https://upload.wikimedia.org/example-film-poster.jpg"
+);
 
 const entityMerge = metadata.mergeWikidataEntity(
   { mode: "movie", id: "1198994" },

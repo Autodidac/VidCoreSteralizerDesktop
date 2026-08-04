@@ -371,8 +371,6 @@ textarea:focus {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);
-  min-width: 0;
-  white-space: normal;
   font-size: 11px;
 }
 
@@ -682,9 +680,12 @@ textarea:focus {
 }
 
 .card-actions .button {
+  min-width: 0;
   min-height: 32px;
-  padding: 0 9px;
+  padding: 5px 9px;
   border-radius: 9px;
+  white-space: normal;
+  line-height: 1.2;
   font-size: 11px;
 }
 
@@ -819,51 +820,6 @@ body.theater .player-shell {
 body.theater .topbar {
   margin-bottom: 10px;
 }
-
-@media (max-width: 1320px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr) 365px;
-  }
-
-  .source-panel {
-    grid-template-columns: minmax(220px, 1fr) 105px 135px auto auto;
-  }
-
-  .source-panel .button,
-  .source-panel .random-mode {
-    align-self: end;
-  }
-}
-
-@media (max-width: 1080px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
-    min-height: auto;
-  }
-
-  .side-panel {
-    max-height: 520px;
-  }
-
-  .current-card {
-    grid-template-columns: 105px minmax(0, 1fr);
-  }
-
-  .current-poster {
-    width: 105px;
-  }
-
-  .current-actions {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-}
-
 
 
 /* v0.2.5 responsive provider and card formatting */
