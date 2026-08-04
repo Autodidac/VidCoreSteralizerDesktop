@@ -1,0 +1,202 @@
+from pathlib import Path
+import shutil
+
+ROOT = Path.cwd()
+NATIVE = ROOT / "VidCoreNativePlayer"
+WEB = ROOT / "VidCoreWebPlayer"
+
+
+def read(path):
+    return path.read_text(encoding="utf-8")
+
+
+def write(path, text):
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
+def replace_once(text, old, new, label):
+    if old not in text:
+        raise RuntimeError(f"Missing final-fix anchor: {label}")
+    return text.replace(old, new, 1)
+
+
+metadata_path = NATIVE / "assets" / "metadata.js"
+metadata = read(metadata_path)
+metadata = replace_once(
+    metadata,
+    '''  function mergeWikipedia(entry, metadata, wikipedia) {
+    if (!wikipedia) return metadata;
+
+    return {
+      ...metadata,
+      title: isGenericTitle(entry, metadata.title)
+        ? wikipedia.title || metadata.title
+        : metadata.title,
+      description: metadata.description || wikipedia.description || "",
+      image: isLikelyBadArtwork(entry, metadata, metadata.image)
+        ? selectArtworkImage(entry, metadata, [
+            { kind: "image", value: wikipedia.imageName || wikipedia.image }
+          ]) || (!isLikelyBadArtwork(entry, metadata, wikipedia.image) ? wikipedia.image : "")
+        : metadata.image || (!isLikelyBadArtwork(entry, metadata, wikipedia.imageName || wikipedia.image)
+          ? wikipedia.image
+          : ""),
+      wikipedia: wikipedia.wikipedia || metadata.article || "",
+      resolutionStatus: metadata.wikidata || wikipedia.title
+        ? "resolved"
+        : metadata.resolutionStatus,
+      resolvedAt: new Date().toISOString()
+    };
+  }''',
+    '''  function mergeWikipedia(entry, metadata, wikipedia) {
+    if (!wikipedia) return metadata;
+
+    const wikipediaImage = isLikelyBadArtwork(
+      entry,
+      metadata,
+      wikipedia.imageName || wikipedia.image
+    )
+      ? ""
+      : wikipedia.image || "";
+
+    return {
+      ...metadata,
+      title: isGenericTitle(entry, metadata.title)
+        ? wikipedia.title || metadata.title
+        : metadata.title,
+      description: metadata.description || wikipedia.description || "",
+      image: isLikelyBadArtwork(entry, metadata, metadata.image)
+        ? wikipediaImage
+        : metadata.image || wikipediaImage,
+      wikipedia: wikipedia.wikipedia || metadata.article || "",
+      resolutionStatus: metadata.wikidata || wikipedia.title
+        ? "resolved"
+        : metadata.resolutionStatus,
+      resolvedAt: new Date().toISOString()
+    };
+  }''',
+    "Wikipedia image URL merge",
+)
+write(metadata_path, metadata)
+
+styles_path = NATIVE / "assets" / "styles.css"
+styles = read(styles_path)
+legacy = '''
+@media (max-width: 1320px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 365px;
+  }
+
+  .source-panel {
+    grid-template-columns: minmax(220px, 1fr) 105px 135px auto auto;
+  }
+
+  .source-panel .button,
+  .source-panel .random-mode {
+    align-self: end;
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: auto;
+  }
+
+  .side-panel {
+    max-height: 520px;
+  }
+
+  .current-card {
+    grid-template-columns: 105px minmax(0, 1fr);
+  }
+
+  .current-poster {
+    width: 105px;
+  }
+
+  .current-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+
+'''
+styles = replace_once(styles, legacy, "\n", "obsolete responsive rules")
+styles = replace_once(
+    styles,
+    '''.metadata-row span,
+.tag {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  min-width: 0;
+  white-space: normal;
+  font-size: 11px;
+}''',
+    '''.metadata-row span,
+.tag {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  font-size: 11px;
+}''',
+    "metadata chip formatting",
+)
+styles = replace_once(
+    styles,
+    '''.card-actions .button {
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 9px;
+  font-size: 11px;
+}''',
+    '''.card-actions .button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 5px 9px;
+  border-radius: 9px;
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 11px;
+}''',
+    "sidebar action button wrapping",
+)
+write(styles_path, styles)
+
+logic_path = NATIVE / "tests" / "logic.test.mjs"
+logic = read(logic_path)
+logic = replace_once(
+    logic,
+    'assert.match(catalogs.movies123, /123moviesfree\\.net\\/search\\/mating-season/);',
+    '''assert.match(catalogs.movies123, /123moviesfree\\.net\\/search\\/mating-season/);
+const wikipediaMerge = metadata.mergeWikipedia(
+  { mode: "movie", id: "1", title: "Example Film" },
+  { title: "Example Film", image: "", resolutionStatus: "resolved" },
+  {
+    title: "Example Film",
+    imageName: "Example Film poster.jpg",
+    image: "https://upload.wikimedia.org/example-film-poster.jpg"
+  }
+);
+assert.equal(
+  wikipediaMerge.image,
+  "https://upload.wikimedia.org/example-film-poster.jpg"
+);''',
+    "Wikipedia image URL regression test",
+)
+write(logic_path, logic)
+
+for name in ["metadata.js", "styles.css"]:
+    shutil.copy2(NATIVE / "assets" / name, WEB / name)
+
+print("Applied final v0.2.5 image URL and responsive formatting cleanup.")
