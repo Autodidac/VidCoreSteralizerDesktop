@@ -119,6 +119,7 @@
 - [x] Add a supported WebView2 unpacked-extension loader for user-supplied uBlock Origin without bundling, downloading, updating, modifying, or deleting extension files.
 - [x] Runtime-test extension registration with the official uBlock Origin 1.73.0 Chromium archive after verifying its published SHA-256.
 - [x] Add regression coverage for YouTube routing, thumbnail identity, provider controls, imported defaults, linked metadata, and Native/Web asset synchronization.
+- [x] Stage v0.2.16 with synchronized Native/Web assets, 236 provider-aware defaults across 27 lists, local MSVC validation, a successful headless browser startup check, and a clean local Defender scan.
 
 ## Open / provider-limited
 
