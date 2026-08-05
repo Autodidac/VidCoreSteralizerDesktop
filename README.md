@@ -11,8 +11,8 @@ Two maintained VidCore players live in separate folders:
 - YouTube is a distinct fourth playback mode with URL/ID normalization, official embed playback, and oEmbed metadata.
 - Previous and Next move through the selected and filtered Library list, with wraparound.
 - Edit/Save stores a manual title and an optional provider-aware next-in-series link.
-- A persistent volume slider controls provider APIs and the native WebView2 audio session.
-- The native app can load a user-supplied unpacked uBlock Origin Chromium build from data/extensions/ublock; it does not bundle or download the extension.
+- A persistent volume slider requests provider-supported playback volume; native Windows audio-session control is disabled in the security rollback.
+- Native WebView2 extension loading is disabled after the v0.2.16 Defender detection; the browser build can still use extensions installed normally in the user's browser.
 - Native and Web shared assets have regression checks that fail when the copies drift.
 
 Start with the README inside the version you want to run.

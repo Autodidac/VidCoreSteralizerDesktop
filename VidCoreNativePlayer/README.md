@@ -20,7 +20,7 @@ This repository contains the complete desktop player at its root.
 - VidCore, YTHD, and VidUp remain first in that order; YouTube is a distinct fourth mode.
 - Movie IDs use numeric TMDB or IMDb identifiers; YouTube accepts an 11-character ID or common video URL.
 - TV IDs include season and episode.
-- Play, Pause, Stop, Mute, external volume, Theater, Fullscreen, Copy URL, UI zoom, and DevTools are available.
+- Play, Pause, Stop, Mute, provider-supported volume, Theater, Fullscreen, Copy URL, UI zoom, and DevTools are available.
 - Previous and Next move through the selected and filtered Library list and wrap at each end.
 - Shift+[ and Shift+] retain metadata-first numeric-ID scanning.
 - Random numeric and public-database discovery remain available.
@@ -72,15 +72,13 @@ data/blocked-hosts.txt
 
 This blocks popup windows and page hijacks. It does not guarantee removal of every visual advertisement rendered inside the embedded provider frame.
 
-## Optional native uBlock Origin filtering
+## YouTube filtering security status
 
-The native player can run a user-supplied unpacked Chromium extension through WebView2's supported profile API. To use uBlock Origin's own filtering engine, unpack an official Chromium release so this file exists beside the executable:
+The v0.2.17 security rollback does not enable or load WebView2 browser extensions. Native extension loading and Windows process/audio-session enumeration were removed after Microsoft Defender detected `Trojan:Win32/Wacatac.B!ml` in the v0.2.16 download. Do not restore, allowlist, or bypass the blocked binary.
 
-    data/extensions/ublock/manifest.json
+The popup shield still blocks WebView2 new-window requests and navigation hijacks. The volume slider still sends provider-supported player commands, but it no longer enumerates Windows audio sessions.
 
-Restart the player after changing the folder. Shield details reports whether WebView2 loaded it. The application never bundles, downloads, updates, modifies, or deletes the extension. Filtering results still depend on the installed extension, its lists, the WebView2 Runtime, and YouTube's current delivery behavior.
-
-The browser-hosted build cannot install an extension into its cross-origin iframe; use the blocker installed in the browser running that build.
+The browser-hosted build cannot inject a blocker into a cross-origin iframe; filtering there depends on a blocker installed normally in the browser running that build.
 
 ## Requirements
 

@@ -112,6 +112,8 @@ jobs:
           Authenticode status: $($signature.Status)
           Publisher: $($signature.SignerCertificate.Subject)
           Defender scan: $scanResult
+          Native WebView2 browser-extension loading: disabled
+          Native process-tree and Windows audio-session enumeration: disabled
           Runner: windows-2022
           "@ | Set-Content security/SECURITY_REPORT.txt -Encoding utf8
           "DEFENDER_SCAN=$scanResult" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -150,13 +152,15 @@ jobs:
           @"
           ## Shielded Native Stream Player v$env:VERSION
 
-          The native host remains on the Defender-safe network profile: it contains no native WinHTTP page scraper, custom native image downloader, hidden IMDb/TMDB WebView2 resolver, remote image-response capture, or automatic artwork-file deletion code.
+          The native host remains on the Defender-safe network profile: it contains no native WinHTTP page scraper, custom native image downloader, hidden IMDb/TMDB WebView2 resolver, remote image-response capture, automatic artwork-file deletion code, browser-extension loader, process-tree enumeration, or Windows audio-session enumeration.
 
           The Windows executable was scanned during this release workflow. Result: $env:DEFENDER_SCAN
 
           The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A real antivirus detection is treated separately as a release blocker and should not be bypassed.
 
-          Shared product state remains synchronized across Native and Web: VidCore, YTHD, VidUp, and YouTube routing; compact resolve card above provider controls; active-list navigation; external volume; next-in-series metadata; custom-list creation inside Edit/Save; the current provider-aware built-in default union; and zero fabricated built-in history. The native package supports a user-supplied unpacked browser extension but does not bundle or download one.
+          Shared product state remains synchronized across Native and Web: VidCore, YTHD, VidUp, and YouTube routing; compact resolve card above provider controls; active-list navigation; provider-supported volume; next-in-series metadata; custom-list creation inside Edit/Save; the current provider-aware built-in default union; and zero fabricated built-in history.
+
+          Native browser-extension loading and process/audio-session enumeration are intentionally disabled by the current security boundary.
 
           GitHub automatically supplies `Source code (zip)` and `Source code (tar.gz)` for this tag. No redundant custom source archive is attached.
 

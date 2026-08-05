@@ -8,19 +8,14 @@ module;
 #include <string>
 #include <string_view>
 #include <system_error>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <windows.h>
-#include <audiopolicy.h>
-#include <mmdeviceapi.h>
 #include <objbase.h>
-#include <tlhelp32.h>
 #include <shellapi.h>
 #include <shlwapi.h>
 #include <wrl.h>
 #include <WebView2.h>
-#include <WebView2EnvironmentOptions.h>
 
 export module vidcore.webview;
 
@@ -52,19 +47,10 @@ public:
         std::error_code error;
         std::filesystem::create_directories(user_data, error);
 
-        auto environment_options =
-            Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-        Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions6>
-            extension_options;
-        if (SUCCEEDED(environment_options.As(&extension_options)) &&
-            extension_options) {
-            extension_options->put_AreBrowserExtensionsEnabled(TRUE);
-        }
-
         const auto result = CreateCoreWebView2EnvironmentWithOptions(
             nullptr,
             user_data.c_str(),
-            environment_options.Get(),
+            nullptr,
             Microsoft::WRL::Callback<
                 ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
             >(
@@ -99,7 +85,6 @@ public:
                                 register_events();
                                 resize();
                                 install_popup_guard();
-                                install_user_extension();
                                 return S_OK;
                             }
                         ).Get()
@@ -134,113 +119,6 @@ public:
     }
 
 private:
-    [[nodiscard]] static std::unordered_set<DWORD> process_family(
-        const DWORD root
-    ) {
-        std::unordered_set<DWORD> family{root};
-        std::vector<std::pair<DWORD, DWORD>> processes;
-        const auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (snapshot == INVALID_HANDLE_VALUE) {
-            return family;
-        }
-
-        PROCESSENTRY32W process{.dwSize = sizeof(PROCESSENTRY32W)};
-        if (Process32FirstW(snapshot, &process)) {
-            do {
-                processes.emplace_back(
-                    process.th32ProcessID,
-                    process.th32ParentProcessID
-                );
-            } while (Process32NextW(snapshot, &process));
-        }
-        CloseHandle(snapshot);
-
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            for (const auto& [identifier, parent] : processes) {
-                if (family.contains(parent) && !family.contains(identifier)) {
-                    family.insert(identifier);
-                    changed = true;
-                }
-            }
-        }
-        return family;
-    }
-
-    bool apply_audio_volume(const double requested) const {
-        if (!webview_) return false;
-
-        UINT32 browser_process{};
-        if (FAILED(webview_->get_BrowserProcessId(&browser_process)) ||
-            browser_process == 0) {
-            return false;
-        }
-        const auto family = process_family(static_cast<DWORD>(browser_process));
-
-        Microsoft::WRL::ComPtr<IMMDeviceEnumerator> device_enumerator;
-        if (FAILED(CoCreateInstance(
-            __uuidof(MMDeviceEnumerator),
-            nullptr,
-            CLSCTX_ALL,
-            IID_PPV_ARGS(&device_enumerator)
-        ))) {
-            return false;
-        }
-
-        Microsoft::WRL::ComPtr<IMMDevice> device;
-        if (FAILED(device_enumerator->GetDefaultAudioEndpoint(
-            eRender,
-            eMultimedia,
-            &device
-        ))) {
-            return false;
-        }
-
-        Microsoft::WRL::ComPtr<IAudioSessionManager2> session_manager;
-        if (FAILED(device->Activate(
-            __uuidof(IAudioSessionManager2),
-            CLSCTX_ALL,
-            nullptr,
-            reinterpret_cast<void**>(session_manager.GetAddressOf())
-        ))) {
-            return false;
-        }
-
-        Microsoft::WRL::ComPtr<IAudioSessionEnumerator> sessions;
-        if (FAILED(session_manager->GetSessionEnumerator(&sessions))) {
-            return false;
-        }
-
-        int count{};
-        sessions->GetCount(&count);
-        bool applied = false;
-        const auto volume = static_cast<float>(
-            std::clamp(requested, 0.0, 1.0)
-        );
-        for (int index = 0; index < count; ++index) {
-            Microsoft::WRL::ComPtr<IAudioSessionControl> session;
-            if (FAILED(sessions->GetSession(index, &session)) || !session) {
-                continue;
-            }
-
-            Microsoft::WRL::ComPtr<IAudioSessionControl2> details;
-            DWORD process{};
-            if (FAILED(session.As(&details)) ||
-                FAILED(details->GetProcessId(&process)) ||
-                !family.contains(process)) {
-                continue;
-            }
-
-            Microsoft::WRL::ComPtr<ISimpleAudioVolume> audio;
-            if (SUCCEEDED(session.As(&audio)) && audio &&
-                SUCCEEDED(audio->SetMasterVolume(volume, nullptr))) {
-                applied = true;
-            }
-        }
-        return applied;
-    }
-
     [[nodiscard]] static std::filesystem::path executable_directory() {
         std::wstring module_path(32768, L'\0');
         const auto length = GetModuleFileNameW(
@@ -565,81 +443,6 @@ private:
         return blocklist_.directory() / L"artwork";
     }
 
-    [[nodiscard]] std::filesystem::path extension_root() const {
-        return blocklist_.directory() / L"extensions" / L"ublock";
-    }
-
-    void ensure_extension_readme() const {
-        std::error_code error;
-        const auto root = blocklist_.directory() / L"extensions";
-        std::filesystem::create_directories(root, error);
-        const auto readme = root / L"README.txt";
-        if (std::filesystem::exists(readme, error)) return;
-
-        std::wofstream output{readme};
-        output
-            << L"Optional native browser extension support\n\n"
-            << L"To use uBlock Origin's maintained filtering engine, unpack "
-               L"an official Chromium release so this file exists:\n"
-            << L"data\\extensions\\ublock\\manifest.json\n\n"
-            << L"The player never downloads, updates, modifies, or deletes "
-               L"extension files. Restart the player after changing them.\n";
-    }
-
-    void set_extension_status(std::wstring status) {
-        extension_status_ = std::move(status);
-        post_event(L"extension|" + extension_status_);
-    }
-    void install_user_extension() {
-        ensure_extension_readme();
-        const auto root = extension_root();
-        std::error_code error;
-        if (!std::filesystem::exists(root / L"manifest.json", error)) {
-            set_extension_status(L"missing|");
-            return;
-        }
-
-        Microsoft::WRL::ComPtr<ICoreWebView2_13> profile_webview;
-        Microsoft::WRL::ComPtr<ICoreWebView2Profile> profile;
-        Microsoft::WRL::ComPtr<ICoreWebView2Profile7> extensions;
-        if (FAILED(webview_.As(&profile_webview)) ||
-            FAILED(profile_webview->get_Profile(&profile)) ||
-            FAILED(profile.As(&extensions)) ||
-            !extensions) {
-            set_extension_status(L"unsupported|");
-            return;
-        }
-
-        const auto result = extensions->AddBrowserExtension(
-            root.c_str(),
-            Microsoft::WRL::Callback<
-                ICoreWebView2ProfileAddBrowserExtensionCompletedHandler
-            >(
-                [this](
-                    const HRESULT extension_result,
-                    ICoreWebView2BrowserExtension* extension
-                ) {
-                    if (FAILED(extension_result) || extension == nullptr) {
-                        set_extension_status(L"error|");
-                        return S_OK;
-                    }
-
-                    LPWSTR raw_name{};
-                    std::wstring name{L"browser extension"};
-                    if (SUCCEEDED(extension->get_Name(&raw_name)) && raw_name) {
-                        name = raw_name;
-                        CoTaskMemFree(raw_name);
-                    }
-                    set_extension_status(L"active|" + name);
-                    return S_OK;
-                }
-            ).Get()
-        );
-        if (FAILED(result)) {
-            set_extension_status(L"error|");
-        }
-    }
-
     void ensure_artwork_readme() const {
         std::error_code error;
         const auto root = artwork_root();
@@ -724,11 +527,8 @@ private:
 
         if (command == L"ready") {
             ensure_artwork_readme();
-            ensure_extension_readme();
             post_event(L"zoom|1.00");
             post_event(L"muted|0");
-            post_event(L"volume|" + std::to_wstring(volume_));
-            post_event(L"extension|" + extension_status_);
             return;
         }
 
@@ -748,16 +548,6 @@ private:
             if (SUCCEEDED(webview_.As(&media)) && media) {
                 media->put_IsMuted(mute ? TRUE : FALSE);
                 post_event(std::wstring{L"muted|"} + (mute ? L"1" : L"0"));
-            }
-            return;
-        }
-
-        if (command == L"volume") {
-            try {
-                volume_ = std::clamp(std::stod(payload), 0.0, 1.0);
-                apply_audio_volume(volume_);
-                post_event(L"volume|" + std::to_wstring(volume_));
-            } catch (...) {
             }
             return;
         }
@@ -876,8 +666,6 @@ private:
     EventRegistrationToken web_message_token_{};
 
     std::mt19937_64 artwork_random_{std::random_device{}()};
-    double volume_{1.0};
-    std::wstring extension_status_{L"missing|"};
     bool shell_loaded_{false};
 };
 

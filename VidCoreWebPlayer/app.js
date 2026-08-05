@@ -111,7 +111,6 @@
     storageDialog: $("#storageDialog"),
     closeStorageDialogButton: $("#closeStorageDialogButton"),
     shieldDialog: $("#shieldDialog"),
-    extensionStatus: $("#extensionStatus"),
     closeShieldDialogButton: $("#closeShieldDialogButton"),
   };
 
@@ -1846,13 +1845,10 @@
     elements.volumeOutput.textContent = `${percent}%`;
     localStorage.setItem(`${SETTINGS_PREFIX}volume`, String(percent));
     VidCoreProviders.requestVolume(percent);
-    postHost(`volume|${(percent / 100).toFixed(2)}`);
     if (announce) {
       setStatus(
         "Volume requested",
-        globalThis.chrome?.webview
-          ? `Native WebView audio set to ${percent}%.`
-          : `Provider volume set to ${percent}% when supported.`,
+        `Provider volume set to ${percent}% when supported.`,
         "ok"
       );
     }
@@ -1943,35 +1939,12 @@
       return;
     }
 
-    if (command === "volume") {
-      const percent = Math.round((Number(payload) || 0) * 100);
-      state.volume = Math.max(0, Math.min(100, percent));
-      elements.volumeSlider.value = String(state.volume);
-      elements.volumeOutput.textContent = `${state.volume}%`;
-      return;
-    }
-
     if (command === "zoom") {
       const percent = Math.round(
         (Number(payload) || 1) * 100
       );
       elements.zoomSlider.value = String(percent);
       elements.zoomOutput.textContent = `${percent}%`;
-      return;
-    }
-
-    if (command === "extension") {
-      const separator = payload.indexOf("|");
-      const status = separator < 0 ? payload : payload.slice(0, separator);
-      const detail = separator < 0 ? "" : payload.slice(separator + 1);
-      const messages = {
-        active: detail ? `${detail} is active.` : "The browser extension is active.",
-        missing: "No unpacked extension found at data/extensions/ublock/manifest.json.",
-        unsupported: "This WebView2 Runtime does not support browser extensions.",
-        error: "The unpacked browser extension could not be loaded."
-      };
-      elements.extensionStatus.textContent =
-        messages[status] || "Browser extension status is unknown.";
       return;
     }
 

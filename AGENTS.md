@@ -70,7 +70,8 @@ The shipping native executable must not regain the behavior removed after the v0
 - No interception and saving of remote image response bodies.
 - No automatic native artwork-file deletion or pruning implementation.
 - No instructions asking users to disable Defender, add exclusions, or bypass a detection.
-- Optional unpacked browser extensions must be user-supplied and loaded only through supported WebView2 profile APIs.
+- No native WebView2 browser-extension loading after the v0.2.16 Defender incident until an independently verified or signed implementation passes the affected user's current signatures.
+- No native process-tree or Windows audio-session enumeration/control until an independently verified or signed implementation passes the affected user's current signatures.
 - The application must not bundle, download, update, modify, or delete those extension files.
 
 The safe native baseline uses WebView2 normally and stores its profile, HTTP cache, IndexedDB, localStorage, settings, and popup history under `data/` beside the executable. User-supplied artwork under `data/artwork/` may be enumerated and displayed locally, but it must never be downloaded, rewritten, pruned, or deleted by the application.
@@ -151,6 +152,6 @@ When a release is reported as blocked or detected:
 - Exact playback position requires provider-supported cross-origin messaging.
 - Provider availability and stream quality remain controlled by each provider.
 - Browser-hosted code cannot inject popup protection or content filtering into a cross-origin provider iframe.
-- Native YouTube filtering depends on the user-supplied extension, WebView2 Runtime support, and current filter behavior.
+- Native YouTube filtering is disabled in the security rollback; browser-hosted filtering depends on the user's normal browser extension and current filter behavior.
 - Metadata can remain incomplete when no matching Wikidata or English Wikipedia record exists.
 - Optional cloud synchronization requires a user-owned backend or account provider.
