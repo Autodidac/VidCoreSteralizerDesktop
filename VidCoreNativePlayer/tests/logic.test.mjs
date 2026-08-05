@@ -105,7 +105,7 @@ const strongCandidateScore = metadata.scoreWikipediaCandidate(
   {
     title: "Example Film",
     extract: "Example Film is a 2025 film with IMDb identifier tt1234567.",
-    thumbnail: { source: "https://example.invalid/poster.jpg" },
+    thumbnail: { source: "https://example.invalid/example-film-poster.jpg" },
     categories: [{ title: "Category:2025 films" }]
   }
 );
@@ -172,7 +172,7 @@ const entityMerge = metadata.mergeWikidataEntity(
     labels: { en: { value: "Example Film" } },
     descriptions: { en: { value: "2025 film" } },
     claims: {
-      P18: [{ mainsnak: { datavalue: { value: "Example Poster.jpg" } } }]
+      P18: [{ mainsnak: { datavalue: { value: "Example Film Poster.jpg" } } }]
     },
     sitelinks: { enwiki: { title: "Example Film" } }
   }
