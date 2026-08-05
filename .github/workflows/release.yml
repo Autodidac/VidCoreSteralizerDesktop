@@ -65,7 +65,7 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.11."
+            throw "VERSION must contain a semantic version such as 1.2.3."
           }
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
           if ($cmake -notmatch "VERSION\s+$([regex]::Escape($version))") {
@@ -157,7 +157,7 @@ jobs:
 
           The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A real antivirus detection is treated separately as a release blocker and should not be bypassed.
 
-          Shared product state remains synchronized across Native and Web: VidCore, YTHD, and VidUp provider routing; compact resolve card above provider controls; custom-list deletion that preserves titles in Favorites; 111 provider-aware built-in entries across 25 lists; and zero fabricated built-in history.
+          Shared product state remains synchronized across Native and Web: VidCore, YTHD, and VidUp provider routing; compact resolve card above provider controls; custom-list deletion that preserves titles in Favorites; 114 provider-aware built-in entries across 25 lists; and zero fabricated built-in history.
 
           GitHub automatically supplies `Source code (zip)` and `Source code (tar.gz)` for this tag. No redundant custom source archive is attached.
 
@@ -187,6 +187,24 @@ jobs:
             dist/VidCoreWebPlayer-v$env:VERSION.zip `
             dist/SECURITY_REPORT.txt `
             dist/SHA256SUMS.txt
+
+      - name: Remove obsolete release branches
+        if: success() && github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          foreach ($branch in @(
+            'bootstrap-v0.2.9',
+            'release-v0.2.9',
+            'release-v0.2.9-trigger',
+            'release-v0.2.12-recovery',
+            'release-v0.2.13-trigger'
+          )) {
+            git push origin --delete $branch
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Branch already absent or could not be removed: $branch"
+            }
+          }
+          exit 0
 
       - name: Record release workflow result
         if: always()
