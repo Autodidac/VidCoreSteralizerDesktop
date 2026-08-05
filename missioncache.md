@@ -138,11 +138,13 @@
 - [x] Add portable local YouTube channel subscriptions with official Data API channel/upload checks and keep the optional API key local-only and outside JSON backups.
 - [x] Preserve the native security rollback: no stream extraction, WinHTTP scraper, browser-extension loader, Windows process/audio enumeration, remote-response capture, or Defender bypass.
 - [x] Prepare v0.2.18 with synchronized Native/Web assets, passing JavaScript/static validation, a successful local MSVC Release build, and a clean current-signature local Defender scan.
+- [x] Publish v0.2.18 and confirm the GitHub validation, MSVC build, runner Defender scan, packaging, release upload, and RELEASE_STATUS.md success record.
+- [x] Verify the four downloadable v0.2.18 assets, both ZIP checksums, package contents, embedded security report, executable hash/signature state, and current-signature local Defender scans of the downloaded native ZIP and extracted executable.
+
 ## Open / provider-limited
 
-- [ ] Publish v0.2.18 and confirm validation, MSVC build, Defender scan, packaging, checksums, release assets, and recorded release status.
 - [ ] Confirm on the affected Windows machine that the identified HTTPS wrapper removes YouTube Error 153 for embeddable videos; owner-disabled and region-limited videos may still require Watch on YouTube.
-- [ ] Confirm v0.2.17 does not trigger Defender during the affected user's normal browser download before broadly recommending the native ZIP; direct ZIP and Internet-origin executable scans passed, but v0.2.16's download-time result differed.
+- [ ] Confirm v0.2.18 does not trigger Defender during the affected user's normal browser download before broadly recommending the native ZIP; direct downloaded-ZIP and extracted-executable scans passed with current signatures, but v0.2.16's download-time result differed.
 - [ ] The resolver revision referenced in chat is not present in the repository or reachable history; integrate it only after its exact source is available and passes the Defender-safe boundary.
 - [ ] Verify real YouTube ad filtering only after a safe filtering path is restored; the current native security baseline intentionally does not load browser extensions.
 - [ ] Reintroduce native unpacked-extension loading only after an independently verified or signed design passes the affected user's current Defender signatures.
