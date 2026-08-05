@@ -199,7 +199,7 @@ scanner.addResolvedImage({
   mode: "movie",
   id: "1",
   title: "Test",
-  image: "https://example.invalid/poster.jpg"
+  image: "https://example.invalid/test-poster.jpg"
 });
 
 assert.equal(scanner.readQueue().length, 1);

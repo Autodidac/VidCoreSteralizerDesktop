@@ -96,6 +96,7 @@
 - [x] Repair Related with automatic current-title hydration, public genre-label fallback, and local-library genre/category fallback.
 - [x] Tighten artwork acceptance around sequel numbers, conflicting years, article media type, book/title-page imagery, historical source material, soundtrack/album art, and unrelated posters.
 - [x] Resolve an exact Wikidata entity's title before validating its artwork so valid title-matching posters are not compared against generic Movie/TV ID placeholders.
+- [x] Update scanner test artwork to carry the resolved title identity instead of relying on an unqualified poster filename that production now rejects.
 
 ## Open / provider-limited
 
