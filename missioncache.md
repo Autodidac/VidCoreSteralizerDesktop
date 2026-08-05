@@ -33,7 +33,6 @@
 - [x] Merge only previously unseen built-in titles and lists without overwriting edits or restoring deleted seed items.
 - [x] Publish release `v0.2.4` with the built-in starter library.
 
-
 - [x] Reject mismatched Wikipedia diagrams, person portraits, cast photos, red-carpet images, and unrelated subject artwork.
 - [x] Prefer exact-title Wikidata poster/logo properties and add a strict Wikimedia Commons artwork fallback.
 - [x] Remove already-saved mismatched artwork non-destructively while preserving lists, notes, and watched state.
@@ -44,9 +43,7 @@
 - [x] Resolve native assets relative to the executable instead of the launch working directory.
 - [x] Publish release `v0.2.5` with artwork validation, external catalog links, top provider controls, corrected formatting, and portable storage.
 
-
 - [x] Keep strict Wikidata, Wikipedia, and Wikimedia Commons artwork only as fallback sources.
-
 
 - [x] Rename the visible application and native window to `Shielded Native Stream Player`.
 - [x] Remove the blocker count while keeping native popup protection active and accessible through Shield details.
@@ -67,26 +64,21 @@
 - [x] Reconcile the latest supplied backup so all 108 built-in default titles remain included without overwriting user edits.
 - [x] Publish release `v0.2.7` with the swapped top sections and list management cleanup.
 
-
 - [x] Merge every supplied August 4 backup as a union instead of replacing one backup with another.
 - [x] Preserve all 111 provider-aware saved entries and all 25 named lists in built-in defaults.
 - [x] Add Reacher, Dexter: Resurrection, The Sandman, and the Fantasy list while retaining Wednesday, Landman, and Mating Season.
 - [x] Keep built-in history empty so a fresh install does not start with fabricated Continue Watching activity.
 - [x] Publish release `v0.2.8` with the complete merged default union.
 
-
-
-
 - [x] Treat the real-user Microsoft Defender detection on v0.2.9 as a release blocker.
 - [x] Remove the hidden IMDb/TMDB WebView2 resolver, image-response capture, and portable artwork-file cache from the shipping native executable.
 - [x] Restore the known Defender-safe v0.2.8 native network profile while retaining the compact layout, merged defaults, provider logic, and list management.
+- [x] Publish release `v0.2.10` after the rollback passed validation, MSVC build, packaging, and the release-runner Defender scan.
 
 ## Open / provider-limited
 
-
-- [ ] Publish v0.2.10 and verify the downloadable Windows artifact no longer triggers the reported Defender detection.
+- [ ] Verify v0.2.10 on the affected user's local Microsoft Defender installation; the GitHub runner cannot reproduce every endpoint signature state.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
-
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
 - [ ] Provider availability and stream quality remain controlled by the configured provider.
