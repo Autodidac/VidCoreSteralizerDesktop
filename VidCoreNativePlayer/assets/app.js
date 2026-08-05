@@ -89,6 +89,7 @@
     saveDialogTitle: $("#saveDialogTitle"),
     saveList: $("#saveList"),
     saveNotes: $("#saveNotes"),
+    saveFavorite: $("#saveFavorite"),
     saveWatched: $("#saveWatched"),
     cancelSaveButton: $("#cancelSaveButton"),
     deleteDialogButton: $("#deleteDialogButton"),
@@ -104,6 +105,7 @@
     currentMetadata: null,
     currentMetadataKey: "",
     related: [],
+    relatedLoading: false,
     activePanel: "library",
     blocked: [],
     muted: false,
@@ -112,7 +114,8 @@
     dialogEntry: null,
     scanner: null,
     artworkSequence: 0,
-    artworkRequests: new Map()
+    artworkRequests: new Map(),
+    localArtworkCache: new Map()
   };
 
   function postHost(message) {
@@ -130,29 +133,63 @@
     return `${mode}:id:${String(entry?.id || "unknown").toLowerCase()}`;
   }
 
+  function isFavoriteEntry(entry) {
+    return Boolean(entry?.favorite || entry?.list === "Favorites");
+  }
+
+  function categoryForEntry(entry) {
+    const value = String(entry?.list || "").trim();
+    return value && value !== "Favorites" ? value : "Uncategorized";
+  }
+
+  function hostField(value) {
+    return encodeURIComponent(String(value || ""));
+  }
+
   function requestNativeArtwork(entry, metadata = entry) {
-    void entry;
-    void metadata;
-    return Promise.resolve("");
+    if (!globalThis.chrome?.webview) return Promise.resolve("");
+    if (!entry?.list && !metadata?.list &&
+        entry?.favorite === undefined && metadata?.favorite === undefined) {
+      return Promise.resolve("");
+    }
+
+    const combined = { ...entry, ...metadata };
+    const category = categoryForEntry(combined);
+    const favorite = isFavoriteEntry(combined);
+    const identity = mediaCacheIdentity(entry, metadata);
+    const title = metadata?.title || entry?.title || VidCoreMetadata.fallbackTitle(entry);
+    const cacheKey = `${category}|${favorite ? 1 : 0}|${identity}`;
+    if (state.localArtworkCache.has(cacheKey)) {
+      return state.localArtworkCache.get(cacheKey);
+    }
+
+    const requestId = `local-${++state.artworkSequence}`;
+    const request = new Promise(resolve => {
+      const timer = setTimeout(() => {
+        state.artworkRequests.delete(requestId);
+        resolve("");
+      }, 2500);
+      state.artworkRequests.set(requestId, { resolve, timer });
+      postHost([
+        "local-artwork",
+        requestId,
+        hostField(category),
+        hostField(identity),
+        hostField(title),
+        favorite ? "1" : "0"
+      ].join("|"));
+    });
+    state.localArtworkCache.set(cacheKey, request);
+    return request;
   }
 
   async function preferOfficialArtwork(entry, metadata) {
-    try {
-      const image = await requestNativeArtwork(entry, metadata);
-      return image
-        ? {
-            ...metadata,
-            image,
-            artworkSource: "IMDb/TMDB local cache"
-          }
-        : metadata;
-    } catch {
-      return metadata;
-    }
+    void entry;
+    return metadata;
   }
 
   async function pruneNativeArtworkCache() {
-    // WebView2 owns its browser cache under data/ beside the executable.
+    // User-owned data/artwork files are never downloaded, deleted, or pruned.
   }
 
   function setStatus(title, text, type = "") {
@@ -315,6 +352,16 @@
     container.append(poster);
   }
 
+  function setEntryPoster(container, entry, metadata, fallback, guard = () => true) {
+    const remoteImage = VidCoreMetadata.isLikelyBadArtwork(entry, metadata, metadata.image)
+      ? ""
+      : metadata.image;
+    setPoster(container, remoteImage, fallback);
+    requestNativeArtwork(entry, metadata).then(image => {
+      if (image && guard()) setPoster(container, image, fallback);
+    }).catch(() => {});
+  }
+
   function renderCurrent(entry, metadata) {
     elements.currentType.textContent = entry.mode === "movie"
       ? "Movie"
@@ -325,12 +372,12 @@
       metadata.description ||
       "No description is available for this identifier.";
 
-    setPoster(
+    setEntryPoster(
       elements.currentPoster,
-      VidCoreMetadata.isLikelyBadArtwork(entry, metadata, metadata.image)
-        ? ""
-        : metadata.image,
-      entry.mode === "movie" ? "M" : "TV"
+      entry,
+      metadata,
+      entry.mode === "movie" ? "M" : "TV",
+      () => isCurrentEntry(entry)
     );
 
     elements.currentMeta.replaceChildren();
@@ -409,18 +456,99 @@
     }
   }
 
-  async function loadRelated(entry, metadata) {
-    try {
-      state.related = await VidCoreMetadata.related(entry, metadata);
-      for (const candidate of state.related) {
-        state.scanner?.addResolvedImage(candidate);
-      }
-    } catch {
-      state.related = [];
-    }
+  function normalizedGenreSet(entry) {
+    return new Set((entry?.genres || [])
+      .map(value => String(value || "").toLocaleLowerCase().trim())
+      .filter(Boolean));
+  }
 
+  async function localRelated(entry, metadata) {
+    if (!state.storageReady) return [];
+    const sourceGenres = normalizedGenreSet(metadata);
+    const sourceCategory = categoryForEntry(metadata);
+    if (sourceGenres.size === 0 && sourceCategory === "Uncategorized") return [];
+
+    const currentKey = VidCoreMetadata.entryKey(entry);
+    const candidates = await VidCoreStorage.getAll(VidCoreStorage.STORES.favorites);
+    const scored = [];
+    for (const candidate of candidates) {
+      if (candidate.key === currentKey) continue;
+      const candidateGenres = normalizedGenreSet(candidate);
+      let overlap = 0;
+      for (const genre of sourceGenres) {
+        if (candidateGenres.has(genre)) overlap += 1;
+      }
+      let score = overlap * 20;
+      if (sourceCategory !== "Uncategorized" &&
+          categoryForEntry(candidate) === sourceCategory) score += 8;
+      const sourceYear = Number.parseInt(metadata?.year, 10);
+      const candidateYear = Number.parseInt(candidate?.year, 10);
+      if (Number.isInteger(sourceYear) && Number.isInteger(candidateYear)) {
+        score += Math.max(0, 6 - Math.min(6, Math.abs(sourceYear - candidateYear)));
+      }
+      if (score > 0) scored.push({ candidate, score });
+    }
+    return scored
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 18)
+      .map(item => item.candidate);
+  }
+
+  async function loadRelated(entry, metadata) {
+    state.relatedLoading = true;
+    renderRelated();
+    let remote = [];
+    try {
+      remote = await VidCoreMetadata.related(entry, metadata);
+    } catch {
+      remote = [];
+    }
+    const local = await localRelated(entry, metadata).catch(() => []);
+    const seen = new Set();
+    state.related = [...remote, ...local].filter(candidate => {
+      try {
+        const key = VidCoreMetadata.entryKey(candidate);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      } catch {
+        return false;
+      }
+    }).slice(0, 24);
+    state.relatedLoading = false;
+
+    for (const candidate of state.related) {
+      state.scanner?.addResolvedImage(candidate);
+    }
     renderRelated();
     renderRecommended();
+  }
+
+  async function hydrateCurrentFromLibrary(loadSuggestions = false) {
+    if (!state.storageReady) return null;
+    const entry = currentEntrySafe();
+    const key = VidCoreMetadata.entryKey(entry);
+    const saved = await VidCoreStorage.get(VidCoreStorage.STORES.favorites, key) ||
+      await VidCoreStorage.get(VidCoreStorage.STORES.history, key);
+    if (!saved) return null;
+    state.currentMetadata = saved;
+    state.currentMetadataKey = key;
+    renderCurrent(entry, saved);
+    if (loadSuggestions && saved.resolutionStatus === "resolved") {
+      await loadRelated(entry, saved);
+    }
+    return saved;
+  }
+
+  async function ensureRelated() {
+    if (state.relatedLoading || state.related.length) return;
+    const entry = currentEntrySafe();
+    const saved = await hydrateCurrentFromLibrary(false);
+    if (saved?.resolutionStatus === "resolved") {
+      await loadRelated(entry, saved);
+      return;
+    }
+    await resolveEntry(entry, true);
   }
 
   async function resolveEntry(entry, quiet = false) {
@@ -437,11 +565,22 @@
     metadata = await preferOfficialArtwork(entry, metadata);
 
     if (isCurrentEntry(entry)) {
-      state.currentMetadata = metadata;
+      const savedEntry = state.storageReady
+        ? await VidCoreStorage.get(VidCoreStorage.STORES.favorites, key)
+        : null;
+      const displayMetadata = savedEntry
+        ? {
+            ...savedEntry,
+            ...metadata,
+            list: categoryForEntry(savedEntry),
+            favorite: isFavoriteEntry(savedEntry)
+          }
+        : metadata;
+      state.currentMetadata = displayMetadata;
       state.currentMetadataKey = key;
-      renderCurrent(entry, metadata);
-      state.scanner?.addResolvedImage({ ...entry, ...metadata });
-      await loadRelated(entry, metadata);
+      renderCurrent(entry, displayMetadata);
+      state.scanner?.addResolvedImage({ ...entry, ...displayMetadata });
+      await loadRelated(entry, displayMetadata);
     }
 
     await persistMetadata(entry, metadata);
@@ -593,6 +732,9 @@
       renderRecommended();
     } else if (panel === "related") {
       renderRelated();
+      ensureRelated().catch(error =>
+        setStatus("Related lookup failed", error.message, "warn")
+      );
     } else if (panel === "continue") {
       renderContinueWatching();
     } else if (panel === "blocked") {
@@ -618,12 +760,12 @@
 
     const poster = document.createElement("div");
     poster.className = "card-poster";
-    setPoster(
+    setEntryPoster(
       poster,
-      VidCoreMetadata.isLikelyBadArtwork(entry, entry, entry.image)
-        ? ""
-        : entry.image,
-      entry.mode === "movie" ? "M" : "TV"
+      entry,
+      entry,
+      entry.mode === "movie" ? "M" : "TV",
+      () => card.isConnected
     );
 
     const body = document.createElement("div");
@@ -762,11 +904,8 @@
 
     let { lists, favorites } = await listData();
     const customCount = name =>
-      favorites.filter(entry => entry.list === name).length;
+      favorites.filter(entry => categoryForEntry(entry) === name).length;
 
-    // Empty custom lists disappear once they are no longer the actively
-    // selected newly-created list. This keeps the list bar free of dead labels
-    // without making a fresh list vanish before the user can put an item in it.
     const staleEmptyLists = lists.filter(list =>
       list.name !== "Favorites" &&
       list.name !== state.selectedList &&
@@ -779,22 +918,24 @@
       lists = lists.filter(list => !staleEmptyLists.some(stale => stale.name === list.name));
     }
 
-    const customNames = lists
+    const storedNames = lists
       .map(list => list.name)
-      .filter(name => name !== "Favorites")
-      .filter(name => customCount(name) > 0 || name === state.selectedList);
+      .filter(name => name !== "Favorites");
+    const entryNames = favorites.map(categoryForEntry);
+    const customNames = [...new Set([...storedNames, ...entryNames])]
+      .filter(name => customCount(name) > 0 || name === state.selectedList)
+      .sort((left, right) => left.localeCompare(right));
     const names = ["All", "Favorites", ...customNames];
 
-    if (!names.includes(state.selectedList)) {
-      state.selectedList = "All";
-    }
-
+    if (!names.includes(state.selectedList)) state.selectedList = "All";
     elements.listChips.replaceChildren();
 
     for (const name of names) {
       const count = name === "All"
         ? favorites.length
-        : favorites.filter(entry => entry.list === name).length;
+        : name === "Favorites"
+          ? favorites.filter(isFavoriteEntry).length
+          : customCount(name);
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "list-chip";
@@ -815,14 +956,13 @@
     elements.deleteListButton.disabled = !customSelected;
 
     elements.saveList.replaceChildren();
-    const orderedLists = [
-      ...lists.filter(list => list.name === "Favorites"),
-      ...lists.filter(list => list.name !== "Favorites")
-    ];
-    for (const list of orderedLists) {
+    const saveCategories = customNames.includes("Uncategorized")
+      ? customNames
+      : [...customNames, "Uncategorized"];
+    for (const name of saveCategories) {
       const option = document.createElement("option");
-      option.value = list.name;
-      option.textContent = list.name;
+      option.value = name;
+      option.textContent = name;
       elements.saveList.append(option);
     }
   }
@@ -835,7 +975,9 @@
     return entries
       .filter(entry =>
         state.selectedList === "All" ||
-        entry.list === state.selectedList
+        (state.selectedList === "Favorites"
+          ? isFavoriteEntry(entry)
+          : categoryForEntry(entry) === state.selectedList)
       )
       .filter(entry => {
         if (!search) return true;
@@ -843,7 +985,7 @@
           entry.title,
           entry.id,
           entry.notes,
-          entry.list,
+          categoryForEntry(entry),
           ...(entry.genres || [])
         ]
           .filter(Boolean)
@@ -906,7 +1048,7 @@
         VidCoreStorage.STORES.favorites
       )
     )
-      .filter(entry => entry.list === "Favorites")
+      .filter(isFavoriteEntry)
       .sort((left, right) =>
         String(right.updatedAt || right.createdAt || "")
           .localeCompare(
@@ -918,7 +1060,7 @@
 
     if (entries.length === 0) {
       elements.favoritesCards.append(
-        emptyCard("Save a title to Favorites to keep it here permanently.")
+        emptyCard("Mark titles as Favorites without removing their category.")
       );
       return;
     }
@@ -1000,7 +1142,9 @@
 
     if (state.related.length === 0) {
       elements.relatedCards.append(
-        emptyCard("Resolve a title to load related movies or TV.")
+        emptyCard(state.relatedLoading
+          ? "Loading related titles…"
+          : "Open Related to resolve the current title and compare it with your library.")
       );
       return;
     }
@@ -1063,13 +1207,16 @@
     elements.saveDialogTitle.textContent = existing
       ? "Edit library item"
       : "Save to library";
-    elements.saveList.value =
-      existing?.list ||
-      (state.activePanel === "favorites"
-        ? "Favorites"
-        : state.selectedList !== "All"
-          ? state.selectedList
-          : "Favorites");
+    const category = existing
+      ? categoryForEntry(existing)
+      : state.selectedList !== "All" && state.selectedList !== "Favorites"
+        ? state.selectedList
+        : "Uncategorized";
+    elements.saveList.value = category;
+    if (!elements.saveList.value) elements.saveList.value = "Uncategorized";
+    elements.saveFavorite.checked = existing
+      ? isFavoriteEntry(existing)
+      : true;
     elements.deleteDialogButton.classList.toggle("hidden", !existing);
     elements.saveNotes.value = existing?.notes || "";
     elements.saveWatched.checked = Boolean(existing?.watched);
@@ -1103,7 +1250,8 @@
           metadata?.title ||
           existing?.title ||
           VidCoreMetadata.fallbackTitle(entry),
-        list: elements.saveList.value || "Favorites",
+        list: elements.saveList.value || "Uncategorized",
+        favorite: elements.saveFavorite.checked,
         notes: elements.saveNotes.value.trim(),
         watched: elements.saveWatched.checked,
         createdAt: existing?.createdAt || now,
@@ -1111,27 +1259,7 @@
       }
     );
 
-    const cachedImage = await requestNativeArtwork(entry, {
-      ...existing,
-      ...(metadata || {})
-    });
-    if (cachedImage) {
-      const saved = await VidCoreStorage.get(
-        VidCoreStorage.STORES.favorites,
-        key
-      );
-      if (saved) {
-        await VidCoreStorage.put(
-          VidCoreStorage.STORES.favorites,
-          {
-            ...saved,
-            image: cachedImage,
-            artworkSource: "IMDb/TMDB local cache",
-            updatedAt: new Date().toISOString()
-          }
-        );
-      }
-    }
+    state.localArtworkCache.clear();
 
     if (elements.saveWatched.checked) {
       const history = await VidCoreStorage.get(
@@ -1162,15 +1290,7 @@
       VidCoreStorage.STORES.favorites,
       key
     );
-    const identity = mediaCacheIdentity(entry, entry);
-    const remainingFavorites = await VidCoreStorage.getAll(
-      VidCoreStorage.STORES.favorites
-    );
-    if (!remainingFavorites.some(candidate =>
-      mediaCacheIdentity(candidate, candidate) === identity
-    )) {
-      postHost(`delete-image-cache|${identity}`);
-    }
+    state.localArtworkCache.clear();
     if (elements.saveDialog.open) {
       elements.saveDialog.close();
     }
@@ -1276,7 +1396,7 @@
     const favorites = await VidCoreStorage.getAll(
       VidCoreStorage.STORES.favorites
     );
-    const members = favorites.filter(entry => entry.list === name);
+    const members = favorites.filter(entry => categoryForEntry(entry) === name);
     const moveNote = members.length
       ? ` ${members.length} saved title${members.length === 1 ? "" : "s"} will move to Favorites.`
       : "";
@@ -1286,7 +1406,7 @@
     for (const entry of members) {
       await VidCoreStorage.put(
         VidCoreStorage.STORES.favorites,
-        { ...entry, list: "Favorites", updatedAt }
+        { ...entry, list: "Uncategorized", favorite: true, updatedAt }
       );
     }
     await VidCoreStorage.remove(VidCoreStorage.STORES.lists, name);
@@ -1309,7 +1429,9 @@
 
     return state.selectedList === "All"
       ? entries
-      : entries.filter(entry => entry.list === state.selectedList);
+      : state.selectedList === "Favorites"
+        ? entries.filter(isFavoriteEntry)
+        : entries.filter(entry => categoryForEntry(entry) === state.selectedList);
   }
 
   async function resolveSelectedList() {
@@ -1655,7 +1777,10 @@
                 title:
                   raw.title ||
                   VidCoreMetadata.fallbackTitle(entry),
-                list: raw.list || "Favorites",
+                list: raw.list && raw.list !== "Favorites"
+                  ? raw.list
+                  : "Uncategorized",
+                favorite: Boolean(raw.favorite || raw.list === "Favorites"),
                 notes: raw.notes || "",
                 watched: Boolean(raw.watched),
                 createdAt:
@@ -1734,6 +1859,26 @@
   }
 
 
+  async function migrateFavoriteOverlay() {
+    if (!state.storageReady) return 0;
+    let changed = 0;
+    for (const entry of await VidCoreStorage.getAll(VidCoreStorage.STORES.favorites)) {
+      const legacyFavorite = entry.list === "Favorites";
+      const category = categoryForEntry(entry);
+      const favorite = Boolean(entry.favorite || legacyFavorite);
+      if (entry.list !== category || entry.favorite !== favorite) {
+        await VidCoreStorage.put(VidCoreStorage.STORES.favorites, {
+          ...entry,
+          list: category,
+          favorite,
+          updatedAt: entry.updatedAt || new Date().toISOString()
+        });
+        changed += 1;
+      }
+    }
+    return changed;
+  }
+
   async function sanitizeStoredArtwork() {
     if (!state.storageReady) return { favorites: 0, history: 0, queue: 0 };
 
@@ -1773,6 +1918,7 @@
       await VidCoreStorage.initialize();
       state.storageReady = true;
       const migration = await migrateLegacyData();
+      const favoriteOverlayMigration = await migrateFavoriteOverlay();
       const artworkCleanup = await sanitizeStoredArtwork();
       elements.storageMode.textContent =
         VidCoreStorage.mode === "indexeddb"
@@ -1780,8 +1926,12 @@
           : "localStorage fallback active";
 
       await renderAllLibraryViews();
+      const restoredCurrent = await hydrateCurrentFromLibrary(false);
+      if (restoredCurrent?.resolutionStatus === "resolved") {
+        loadRelated(currentEntrySafe(), restoredCurrent).catch(() => {});
+      }
       await pruneNativeArtworkCache();
-      const migrated = migration.favorites + migration.history;
+      const migrated = migration.favorites + migration.history + favoriteOverlayMigration;
       const rejectedArtwork = artworkCleanup.favorites + artworkCleanup.history + artworkCleanup.queue;
       setStatus(
         "Library ready",

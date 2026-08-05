@@ -278,6 +278,11 @@
       </label>
 
       <label class="check-row">
+        <input id="saveFavorite" type="checkbox" checked>
+        <span>Keep in Favorites too</span>
+      </label>
+
+      <label class="check-row">
         <input id="saveWatched" type="checkbox">
         <span>Mark watched</span>
       </label>
@@ -299,7 +304,7 @@
     <div class="dialog-body">
       <h3>Library storage</h3>
       <p>
-        Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
+        Favorites are an overlay and no longer replace a title's category. Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. The native player creates data/artwork/category/title folders; drop several JPG, PNG, WebP, GIF, BMP, or AVIF images into a title folder and one is selected randomly for that launch. Those user-owned files are never downloaded or deleted by the player. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
       </p>
       <p>
         Exact playback position is unavailable because the provider frame is cross-origin. Continue Watching records played titles and manual completion state.

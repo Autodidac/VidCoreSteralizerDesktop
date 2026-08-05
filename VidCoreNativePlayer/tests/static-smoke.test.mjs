@@ -32,7 +32,8 @@ for (const id of [
   "fastflixButton",
   "seeflixButton",
   "movies123Button",
-  "deleteListButton"
+  "deleteListButton",
+  "saveFavorite"
 ]) {
   assert.match(html, new RegExp(`id="${id}"`));
 }
@@ -52,6 +53,9 @@ assert.match(
 );
 assert.match(html, /data-panel="favorites">Favorites<\/button>/);
 assert.match(app, /const names = \["All", "Favorites", \.\.\.customNames\]/);
+assert.match(app, /function isFavoriteEntry/);
+assert.match(app, /local-artwork/);
+assert.match(app, /ensureRelated/);
 assert.doesNotMatch(app, /options\.remove/);
 assert.match(app, /deleteDialogButton\.classList\.toggle\("hidden", !existing\)/);
 
@@ -77,7 +81,8 @@ assert.match(styles, /--primary: #2f8cff/);
 assert.match(styles, /aspect-ratio: 1/);
 assert.match(app, /async function deleteSelectedList/);
 assert.match(app, /VidCoreStorage\.remove\(VidCoreStorage\.STORES\.lists, name\)/);
-assert.match(app, /list: "Favorites"/);
+assert.match(app, /favorite: elements\.saveFavorite\.checked/);
+assert.match(app, /list: "Uncategorized"/);
 assert.match(app, /staleEmptyLists/);
 for (const title of [
   "Wednesday",
@@ -101,6 +106,9 @@ assert.match(webview, /external-denied/);
 assert.match(webview, /fastflix\.to/);
 assert.match(webview, /123moviesfree\.net/);
 assert.match(webview, /executable_directory/);
+assert.match(webview, /local-artwork/);
+assert.match(webview, /artwork_root/);
+assert.match(webview, /README\.txt/);
 assert.doesNotMatch(webview, /blocked-count/);
 assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
 assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);

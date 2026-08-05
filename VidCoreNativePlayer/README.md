@@ -148,3 +148,14 @@ The native executable does not contain a custom page scraper, native image downl
 - The compact blue layout, merged defaults, provider routing, list deletion, and portable WebView2 profile remain intact.
 - IMDb/TMDB poster-gallery work remains in the mission cache until it can be delivered without endpoint-protection detections.
 
+
+
+## v0.2.14 local artwork, category, and resolver corrections
+
+- The native package includes `data/artwork/README.txt`.
+- Launching the native player creates `data/artwork/<category>/<title [identity]>/` folders for saved titles. Favorite titles also receive a Favorites overlay folder without leaving their normal category.
+- Drop several JPG, JPEG, PNG, WebP, GIF, BMP, or AVIF files into either generated title folder. One image is chosen randomly per title for the current launch and remains stable for that session.
+- User artwork is never downloaded, modified, pruned, or deleted by the player.
+- Favorites is now a boolean overlay instead of an exclusive category. Legacy Favorites-only entries migrate to `Uncategorized` while remaining favorited.
+- Related automatically hydrates the current saved title, retries public genre matching using labels when Wikidata genre URIs are absent, and falls back to genre/category matches from the local library.
+- Artwork validation now preserves sequel numbers, rejects conflicting years, and blocks book/title-page, ancient-text, soundtrack, album, and unrelated historical-poster matches such as the reported Odyssey, Nobody 2, and In the Grey failures.

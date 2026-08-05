@@ -369,7 +369,7 @@
     ]);
     return normalizeSearchText(value)
       .split(" ")
-      .filter(token => token.length >= 3 && !ignored.has(token));
+      .filter(token => (/^\d+$/.test(token) || token.length >= 3) && !ignored.has(token));
   }
 
   function titleSimilarity(left, right) {
@@ -379,13 +379,32 @@
     return expected.filter(token => candidate.has(token)).length / expected.length;
   }
 
+  function artworkYearConflict(metadata, imageText) {
+    const expected = Number.parseInt(String(metadata?.year || "").slice(0, 4), 10);
+    if (!Number.isInteger(expected)) return false;
+    const years = [...imageText.matchAll(/\b(18\d{2}|19\d{2}|20\d{2})\b/g)]
+      .map(match => Number.parseInt(match[1], 10));
+    return years.length > 0 && !years.some(year => Math.abs(year - expected) <= 1);
+  }
+
+  function artworkTitleMatches(title, imageText) {
+    const expected = meaningfulTitleTokens(title);
+    const candidate = new Set(meaningfulTitleTokens(imageText));
+    if (expected.length === 0) return false;
+    const numeric = expected.filter(token => /^\d+$/.test(token));
+    if (numeric.some(token => !candidate.has(token))) return false;
+    const overlap = expected.filter(token => candidate.has(token)).length / expected.length;
+    const normalizedTitle = normalizeSearchText(title);
+    if (expected.length === 1 && !imageText.includes(normalizedTitle)) return false;
+    return overlap >= 0.67;
+  }
+
   function isLikelyBadArtwork(entry, metadata, image, sourceKind = "image") {
     if (!image) return false;
     try {
       if (new URL(String(image)).protocol === "file:") return false;
     } catch {
     }
-    if (sourceKind === "poster" || sourceKind === "logo") return false;
 
     const imageText = artworkText(image);
     if (!imageText) return true;
@@ -393,14 +412,20 @@
     if (/\b(distribution|diagram|chart|graph|equation|histogram|map|flag|coat of arms|politics|politician|pdf|document|building|headshot|portrait|red carpet|premiere|festival|interview|award ceremony|cast photo|cast group|actor|actress|director|producer|model|football|soccer)\b/.test(imageText)) {
       return true;
     }
+    if (/\b(title page|book cover|frontispiece|manuscript|engraving|lithograph|woodcut|facsimile|first edition|epic poem|homer|ancient greek|sheet music|soundtrack|album cover|music album|studio album|single cover|novel cover|playbill|theatre program)\b/.test(imageText)) {
+      return true;
+    }
+    if (artworkYearConflict(metadata, imageText)) return true;
+
+    const title = metadata?.title || entry?.title || "";
+    const identityMatches = artworkTitleMatches(title, imageText);
+    if (!identityMatches) return true;
 
     if (/\b(poster|key art|cover|title card|logo|movie still|film still|screenshot|screen shot|scene|promotional|publicity still)\b/.test(imageText)) {
       return false;
     }
 
-    const title = metadata?.title || entry?.title || "";
-    const overlap = titleSimilarity(title, imageText);
-    return overlap < 0.5;
+    return sourceKind !== "poster" && sourceKind !== "logo";
   }
 
   function selectArtworkImage(entry, metadata, candidates) {
@@ -420,17 +445,32 @@
       (page?.categories || []).map(category => category.title || category).join(" ")
     );
     const extract = normalizeSearchText(page?.extract || "");
-    const combined = `${normalizeSearchText(pageTitle)} ${categories} ${extract}`;
     const expectedTitle = metadata?.title || "";
+    const normalizedPageTitle = normalizeSearchText(pageTitle);
+    const normalizedExpectedTitle = normalizeSearchText(expectedTitle);
     const similarity = titleSimilarity(expectedTitle, pageTitle);
     const mediaTerms = entry.mode === "movie"
       ? /\b(film|films|movie|cinema)\b/
       : /\b(television|tv series|television series|miniseries)\b/;
     const personTerms = /\b(living people|births|actors|actresses|film directors|television directors|models|people from|american male|american female|british male|british female)\b/;
+    const opening = extract.slice(0, 500);
+    const openingMedia = entry.mode === "movie"
+      ? /\b(is|was|will be) (an? |the )?.{0,80}\bfilm\b/.test(opening)
+      : /\b(is|was|will be) (an? |the )?.{0,80}\b(television|tv) (series|miniseries)\b/.test(opening);
 
     if (personTerms.test(categories)) return false;
-    if (!mediaTerms.test(combined)) return false;
-    return similarity >= 0.6 || normalizeSearchText(pageTitle) === normalizeSearchText(expectedTitle);
+    if (!mediaTerms.test(categories) && !openingMedia) return false;
+
+    const expectedYear = String(metadata?.year || "").slice(0, 4);
+    const candidateYears = [...`${normalizedPageTitle} ${categories} ${extract}`.matchAll(/\b(19\d{2}|20\d{2})\b/g)]
+      .map(match => match[1]);
+    if (expectedYear && candidateYears.length && !candidateYears.includes(expectedYear)) return false;
+    if (meaningfulTitleTokens(expectedTitle).length <= 1 &&
+        normalizedPageTitle !== normalizedExpectedTitle &&
+        !(expectedYear && normalizedPageTitle.includes(`${normalizedExpectedTitle} ${expectedYear}`))) {
+      return false;
+    }
+    return similarity >= 0.67 || normalizedPageTitle === normalizedExpectedTitle;
   }
 
   function slugifyTitle(value) {
@@ -502,7 +542,13 @@
     else if (expectedTitle && title.includes(expectedTitle)) score += 52;
     else if (expectedTitle && expectedTitle.includes(title)) score += 32;
 
-    if (year && combined.includes(year)) score += 22;
+    const candidateYears = [...combined.matchAll(/\b(19\d{2}|20\d{2})\b/g)]
+      .map(match => match[1]);
+    if (year && combined.includes(year)) score += 30;
+    else if (year && candidateYears.length) score -= 120;
+    if (meaningfulTitleTokens(metadata?.title).length <= 1 &&
+        title !== expectedTitle &&
+        !(year && title.includes(`${expectedTitle} ${year}`))) score -= 90;
     if (imdb && combined.includes(imdb)) score += 80;
     if (/disambiguation|list of|episode list/.test(combined)) score -= 120;
     if (/soundtrack|novel|video game|album/.test(title) && entry.mode === "movie") score -= 50;
@@ -723,28 +769,36 @@
   function relatedQuery(entry, metadata) {
     const genreUris = (metadata.genreUris || [])
       .filter(value => /^https?:\/\/www\.wikidata\.org\/entity\/Q\d+$/i.test(value))
-      .slice(0, 3);
+      .slice(0, 4);
+    const genreLabels = (metadata.genres || [])
+      .map(value => String(value || "").toLocaleLowerCase().trim())
+      .filter(Boolean)
+      .slice(0, 4);
 
-    if (genreUris.length === 0) {
-      return "";
-    }
+    if (genreUris.length === 0 && genreLabels.length === 0) return "";
 
     const identifier = entry.mode === "movie" ? "movieTmdb" : "tvTmdb";
     const property = entry.mode === "movie" ? "P4947" : "P4983";
-    const values = genreUris.map(value => `<${value}>`).join(" ");
+    const genreClause = genreUris.length
+      ? `VALUES ?genre { ${genreUris.map(value => `<${value}>`).join(" ")} }`
+      : `?genre rdfs:label ?genreLabel.
+         FILTER(LANG(?genreLabel) = "en")
+         FILTER(LCASE(STR(?genreLabel)) IN (${genreLabels.map(sparqlLiteral).join(", ")}))`;
     const exclusion = /^https?:\/\/www\.wikidata\.org\/entity\/Q\d+$/i.test(
       metadata.wikidata || ""
     )
       ? `FILTER(?item != <${metadata.wikidata}>)`
       : "";
 
-    return `SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image
+    return `SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?poster ?logo ?image
              ?imdb ?${identifier} ?article WHERE {
-      VALUES ?genre { ${values} }
+      ${genreClause}
       ?item wdt:P136 ?genre;
             wdt:${property} ?${identifier}.
       ${exclusion}
       OPTIONAL { ?item wdt:P577 ?date. }
+      OPTIONAL { ?item wdt:P3383 ?poster. }
+      OPTIONAL { ?item wdt:P154 ?logo. }
       OPTIONAL { ?item wdt:P18 ?image. }
       OPTIONAL { ?item wdt:P345 ?imdb. }
       OPTIONAL {
@@ -756,7 +810,7 @@
       }
     }
     ORDER BY DESC(?date)
-    LIMIT 36`;
+    LIMIT 48`;
   }
 
   async function related(entry, metadata) {
@@ -796,6 +850,8 @@
             entry.mode === "movie" ? `Movie ${id}` : `TV ${id}`
           )
         }, [
+          { kind: "poster", value: bindingValue(binding, "poster") },
+          { kind: "logo", value: bindingValue(binding, "logo") },
           { kind: "image", value: bindingValue(binding, "image") }
         ]),
         imdb,
@@ -847,6 +903,7 @@
     resolve,
     resolveMany,
     related,
+    relatedQuery,
     imdbUrl,
     tmdbUrl,
     bindingValue,

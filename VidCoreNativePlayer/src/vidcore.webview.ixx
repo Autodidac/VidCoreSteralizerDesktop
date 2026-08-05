@@ -2,14 +2,18 @@ module;
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <functional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 #include <windows.h>
 #include <objbase.h>
 #include <shellapi.h>
+#include <shlwapi.h>
 #include <wrl.h>
 #include <WebView2.h>
 
@@ -368,6 +372,150 @@ private:
             host_matches(host, L"123moviesfree.net");
     }
 
+    [[nodiscard]] static std::vector<std::wstring> split_fields(
+        const std::wstring& value
+    ) {
+        std::vector<std::wstring> fields;
+        std::size_t begin = 0;
+        while (begin <= value.size()) {
+            const auto end = value.find(L'|', begin);
+            fields.push_back(value.substr(
+                begin,
+                end == std::wstring::npos ? std::wstring::npos : end - begin
+            ));
+            if (end == std::wstring::npos) break;
+            begin = end + 1;
+        }
+        return fields;
+    }
+
+    [[nodiscard]] static std::wstring decode_component(std::wstring value) {
+        std::vector<wchar_t> buffer(value.size() + 1, L'\0');
+        auto length = static_cast<DWORD>(buffer.size());
+        if (SUCCEEDED(UrlUnescapeW(
+            value.data(),
+            buffer.data(),
+            &length,
+            URL_UNESCAPE_AS_UTF8
+        ))) {
+            return std::wstring{buffer.data(), length};
+        }
+        return value;
+    }
+
+    [[nodiscard]] static std::wstring safe_path_component(
+        std::wstring value,
+        std::wstring_view fallback
+    ) {
+        value = uri::trim(std::move(value));
+        std::wstring safe;
+        safe.reserve(value.size());
+        constexpr std::wstring_view invalid = L"<>:\"/\\|?*";
+        for (const auto character : value) {
+            if (character < 32 || invalid.find(character) != std::wstring_view::npos) {
+                safe.push_back(L'-');
+            } else {
+                safe.push_back(character);
+            }
+        }
+        safe = uri::trim(std::move(safe));
+        while (!safe.empty() && (safe.back() == L'.' || safe.back() == L' ')) {
+            safe.pop_back();
+        }
+        if (safe.empty()) safe = fallback;
+        if (safe.size() > 96) safe.resize(96);
+        return safe;
+    }
+
+    [[nodiscard]] static bool supported_artwork(
+        const std::filesystem::path& path
+    ) {
+        const auto extension = uri::lowercase(path.extension().wstring());
+        return extension == L".jpg" || extension == L".jpeg" ||
+            extension == L".png" || extension == L".webp" ||
+            extension == L".gif" || extension == L".bmp" ||
+            extension == L".avif";
+    }
+
+    [[nodiscard]] std::filesystem::path artwork_root() const {
+        return blocklist_.directory() / L"artwork";
+    }
+
+    void ensure_artwork_readme() const {
+        std::error_code error;
+        const auto root = artwork_root();
+        std::filesystem::create_directories(root, error);
+        const auto readme = root / L"README.txt";
+        if (std::filesystem::exists(readme, error)) return;
+        std::wofstream output{readme};
+        output << L"Drop your own JPG, JPEG, PNG, WebP, GIF, BMP, or AVIF files into the generated category/title folders.\n"
+               << L"The player chooses one image per title at random each launch.\n"
+               << L"These files are user-owned and are never downloaded, changed, or deleted by the player.\n";
+    }
+
+    void collect_artwork(
+        const std::filesystem::path& directory,
+        std::vector<std::filesystem::path>& images
+    ) const {
+        std::error_code error;
+        if (!std::filesystem::exists(directory, error)) return;
+        for (const auto& candidate : std::filesystem::directory_iterator(directory, error)) {
+            if (error) break;
+            if (candidate.is_regular_file(error) && supported_artwork(candidate.path())) {
+                images.push_back(candidate.path());
+            }
+            error.clear();
+        }
+    }
+
+    void resolve_local_artwork(const std::wstring& payload) {
+        const auto fields = split_fields(payload);
+        if (fields.size() < 5 || fields[0].empty()) return;
+
+        ensure_artwork_readme();
+        const auto request_id = fields[0];
+        const auto category = safe_path_component(
+            decode_component(fields[1]),
+            L"Uncategorized"
+        );
+        const auto identity = safe_path_component(
+            decode_component(fields[2]),
+            L"unknown"
+        );
+        const auto title = safe_path_component(
+            decode_component(fields[3]),
+            identity
+        );
+        const bool favorite = fields[4] == L"1";
+        const auto item = safe_path_component(
+            title + L" [" + identity + L"]",
+            identity
+        );
+
+        std::error_code error;
+        const auto primary = artwork_root() / category / item;
+        std::filesystem::create_directories(primary, error);
+        std::vector<std::filesystem::path> directories{primary};
+        if (favorite && category != L"Favorites") {
+            const auto favorites = artwork_root() / L"Favorites" / item;
+            error.clear();
+            std::filesystem::create_directories(favorites, error);
+            directories.push_back(favorites);
+        }
+
+        std::vector<std::filesystem::path> images;
+        for (const auto& directory : directories) collect_artwork(directory, images);
+
+        std::wstring event{L"image-resolved|"};
+        event.append(request_id);
+        event.push_back(L'|');
+        if (!images.empty()) {
+            std::uniform_int_distribution<std::size_t> distribution{0, images.size() - 1};
+            event.append(uri::file_url(images[distribution(artwork_random_)]));
+        }
+        post_event(event);
+    }
+
     void handle_message(const std::wstring& message) {
         const auto separator = message.find(L'|');
         const auto command = message.substr(0, separator);
@@ -376,6 +524,7 @@ private:
             : message.substr(separator + 1);
 
         if (command == L"ready") {
+            ensure_artwork_readme();
             post_event(L"zoom|1.00");
             post_event(L"muted|0");
             return;
@@ -456,7 +605,13 @@ private:
             return;
         }
 
+        if (command == L"local-artwork") {
+            resolve_local_artwork(payload);
+            return;
+        }
+
         if (command == L"open-data-folder") {
+            ensure_artwork_readme();
             ShellExecuteW(
                 window_,
                 L"open",
@@ -508,6 +663,7 @@ private:
     EventRegistrationToken navigation_completed_token_{};
     EventRegistrationToken web_message_token_{};
 
+    std::mt19937_64 artwork_random_{std::random_device{}()};
     bool shell_loaded_{false};
 };
 

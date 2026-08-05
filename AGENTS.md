@@ -35,8 +35,8 @@ Keep these behaviors unless the user explicitly changes them:
 - Saved-card Play uses the provider stored with that entry.
 - The compact current/resolve card stays above the provider/play controls.
 - The interface uses the blue theme and square artwork slots.
-- Favorites is permanent.
-- Deleting a custom list moves its titles to Favorites.
+- Favorites is permanent and acts as an overlay; favoriting a title never removes its normal category.
+- Deleting a custom list moves its titles to `Uncategorized` and preserves them in Favorites.
 - Empty custom lists are hidden and pruned after they are no longer selected.
 - Native and Web implementations remain synchronized for shared UI, library, provider, backup, and list-management behavior.
 
@@ -70,7 +70,7 @@ The shipping native executable must not regain the behavior removed after the v0
 - No automatic native artwork-file deletion or pruning implementation.
 - No instructions asking users to disable Defender, add exclusions, or bypass a detection.
 
-The safe native baseline uses WebView2 normally and stores its profile, HTTP cache, IndexedDB, localStorage, settings, and popup history under `data/` beside the executable.
+The safe native baseline uses WebView2 normally and stores its profile, HTTP cache, IndexedDB, localStorage, settings, and popup history under `data/` beside the executable. User-supplied artwork under `data/artwork/` may be enumerated and displayed locally, but it must never be downloaded, rewritten, pruned, or deleted by the application.
 
 IMDb/TMDB multi-poster browsing remains open until it can be implemented through an independently verified or signed design that does not trigger endpoint protection. Wikidata, Wikipedia, and Wikimedia Commons remain the bounded metadata/artwork fallbacks.
 

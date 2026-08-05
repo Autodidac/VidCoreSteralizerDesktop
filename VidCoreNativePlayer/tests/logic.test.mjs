@@ -216,3 +216,46 @@ assert.equal(
   ),
   false
 );
+
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "Nobody 2" },
+    { title: "Nobody 2", year: "2025" },
+    "https://commons.wikimedia.org/Nobodys-Children-1920-film-poster.jpg",
+    "poster"
+  ),
+  true
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "The Odyssey" },
+    { title: "The Odyssey", year: "2026" },
+    "https://commons.wikimedia.org/Homer-The-Odyssey-title-page.jpg"
+  ),
+  true
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "In the Grey" },
+    { title: "In the Grey", year: "2026" },
+    "https://commons.wikimedia.org/Indigo-Grey-The-Past-Sage-soundtrack-cover.jpg",
+    "poster"
+  ),
+  true
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "movie", id: "1", title: "Nobody 2" },
+    { title: "Nobody 2", year: "2025" },
+    "https://commons.wikimedia.org/Nobody-2-2025-film-poster.jpg",
+    "poster"
+  ),
+  false
+);
+assert.match(
+  metadata.relatedQuery(
+    { mode: "movie", id: "1" },
+    { genres: ["action film"], genreUris: [] }
+  ),
+  /genreLabel/
+);

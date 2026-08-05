@@ -90,10 +90,17 @@
 - [x] Delete obsolete v0.2.9, v0.2.12 recovery, and v0.2.13 trigger branches so only `main` remains.
 - [x] Close the temporary v0.2.13 trigger pull request without merging its trigger file.
 - [x] Restore the normal `VERSION`-only release workflow after publication while retaining the 114-entry release notes and corrected asset policy.
+- [x] Reproduce the reported artwork mismatch classes from the supplied screenshots: classical-book/title-page art for The Odyssey, an unrelated historical Nobody poster for Nobody 2, and soundtrack art for In the Grey.
+- [x] Add local user-owned artwork folders under `data/artwork/<category>/<title [identity]>/` with one random image selected per title per launch and no application-managed download or deletion behavior.
+- [x] Convert Favorites into a non-exclusive overlay so titles remain in their normal categories, with legacy Favorites-only records migrated to Uncategorized.
+- [x] Repair Related with automatic current-title hydration, public genre-label fallback, and local-library genre/category fallback.
+- [x] Tighten artwork acceptance around sequel numbers, conflicting years, article media type, book/title-page imagery, historical source material, soundtrack/album art, and unrelated posters.
 
 ## Open / provider-limited
 
-- [ ] Verify the downloadable v0.2.13 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
+- [ ] Publish v0.2.14 with local artwork folders, Favorites overlay semantics, Related repair, and stricter artwork identity validation.
+- [ ] Verify the downloadable v0.2.14 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
+- [x] Supersede the unverified v0.2.13 Windows artifact with v0.2.14 before local endpoint verification.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.

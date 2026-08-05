@@ -31,7 +31,8 @@ await context.VidCoreStorage.put(S.favorites, {
   mode: "movie",
   id: "tt0466342",
   title: "Date Movie",
-  list: "Favorites"
+  list: "Comedy",
+  favorite: true
 });
 const backup = await context.VidCoreStorage.exportData();
 assert.equal(backup.version, 2);
@@ -60,9 +61,13 @@ await context.VidCoreStorage.importData({
 });
 let imported = await context.VidCoreStorage.getAll(S.favorites);
 assert.equal(imported[0].baseUrl, "https://vidup.to");
+assert.equal(imported[0].favorite, true);
+assert.equal(imported[0].list, "Uncategorized");
 
 await context.VidCoreStorage.clear(S.favorites);
 await context.VidCoreStorage.importData(backup);
 imported = await context.VidCoreStorage.getAll(S.favorites);
 assert.equal(imported[0].baseUrl, "https://ythd.org/embed");
+assert.equal(imported[0].favorite, true);
+assert.equal(imported[0].list, "Comedy");
 console.log("Compact provider backup and legacy import checks passed.");

@@ -372,6 +372,11 @@
       baseUrl: normalizeProviderUrl(baseUrl)
     };
     delete expanded.provider;
+    const legacyFavorite = expanded.list === "Favorites";
+    expanded.favorite = Boolean(expanded.favorite || legacyFavorite);
+    expanded.list = legacyFavorite
+      ? "Uncategorized"
+      : String(expanded.list || "").trim() || "Uncategorized";
     expanded.key = recordKey(expanded);
     return expanded;
   }
