@@ -75,7 +75,14 @@
 - [x] Restore the known Defender-safe v0.2.8 native network profile while retaining the compact layout, merged defaults, provider logic, and list management.
 - [x] Publish release `v0.2.10` after the rollback passed validation, MSVC build, packaging, and the release-runner Defender scan.
 
+
+- [x] Add a root `AGENTS.md` with durable product invariants, security boundaries, development procedure, release procedure, incident handling, and repository hygiene.
+- [x] Remove the redundant custom native source-build ZIP from release packaging and rely on GitHub's automatic source ZIP and TAR.GZ archives.
+- [x] Generalize release notes and asset packaging so they describe the current 111-entry, 25-list, zero-history state without stale version-specific claims.
+
 ## Open / provider-limited
+
+- [ ] Publish v0.2.11 with only the native Windows ZIP, Web-player ZIP, security report, and checksum manifest as custom release assets.
 
 - [ ] Verify v0.2.10 on the affected user's local Microsoft Defender installation; the GitHub runner cannot reproduce every endpoint signature state.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
