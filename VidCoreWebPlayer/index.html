@@ -390,12 +390,12 @@
   <dialog id="shieldDialog">
     <div class="dialog-body">
       <h3>Native popup shield</h3>
-      <strong id="extensionStatus">Browser-hosted mode cannot load extensions.</strong>
+      <strong id="extensionStatus">Native extension loading is disabled in this security rollback.</strong>
       <p>
         The C++ host cancels WebView2 new-window requests and top-level navigation hijacks. A document-created guard also blocks window.open, target-blank links, external click redirects, middle-click navigation, and external form submissions inside every frame.
       </p>
       <p>
-        This prevents popup tabs and window hijacks. For maintained ad and script filtering, the native player can load a user-supplied unpacked uBlock Origin Chromium build from data/extensions/ublock/manifest.json. The app never downloads, updates, modifies, or deletes that extension. Restart after placing or changing it. Browser-hosted mode cannot filter a cross-origin YouTube frame.
+        This prevents popup tabs and window hijacks. Native browser-extension loading was removed after the v0.2.16 Microsoft Defender detection. Provider and YouTube filtering remains limited to blocker support supplied by the browser or provider; do not restore or allowlist the blocked v0.2.16 binary.
       </p>
       <div class="dialog-actions">
         <button id="closeShieldDialogButton" class="button primary">Close</button>

@@ -124,11 +124,18 @@
 - [x] Confirm the v0.2.16 validation, MSVC build, GitHub-runner Defender scan, packaging, checksums, and release publication completed successfully.
 - [x] Verify the downloadable v0.2.16 native ZIP with the affected user's current Microsoft Defender signatures and confirm no detection.
 - [x] Supersede the unverified v0.2.15 Windows artifact with the locally verified v0.2.16 release.
+- [x] Treat the later user-reported Microsoft Defender detection `Trojan:Win32/Wacatac.B!ml` on v0.2.16 as a release blocker that overrides the earlier clean CI and local scans.
+- [x] Mark v0.2.16 blocked and v0.2.15 superseded/unverified on GitHub without silently replacing either artifact.
+- [x] Remove native WebView2 extension loading and Windows process/audio-session enumeration from the v0.2.17 candidate while retaining YouTube playback, provider volume messaging, active-list navigation, next-in-series metadata, and imported defaults.
 
 ## Open / provider-limited
 
+- [ ] Publish the separately versioned v0.2.17 security rollback and inspect its workflow, artifacts, security report, and recorded release status.
+- [ ] Verify the downloadable v0.2.17 native candidate with the affected user's current Microsoft Defender signatures before recommending it.
 - [ ] The resolver revision referenced in chat is not present in the repository or reachable history; integrate it only after its exact source is available and passes the Defender-safe boundary.
-- [ ] Verify real YouTube ad filtering with the affected user's current WebView2 Runtime and current uBlock filters; extension registration is verified, but provider behavior can change.
+- [ ] Verify real YouTube ad filtering only after a safe filtering path is restored; the v0.2.17 native candidate intentionally does not load browser extensions.
+- [ ] Reintroduce native unpacked-extension loading only after an independently verified or signed design passes the affected user's current Defender signatures.
+- [ ] Reintroduce native Windows audio-session volume control only after an independently verified or signed design passes the affected user's current Defender signatures; retain provider-supported volume messaging.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.

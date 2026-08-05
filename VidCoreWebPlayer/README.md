@@ -14,7 +14,7 @@ Then open `http://localhost:8080/`.
 
 ## Popup limitation
 
-The web shell can block its own popup attempts, but a normal web page cannot inject scripts into a cross-origin provider iframe. Install a browser blocker such as uBlock Origin in the browser running this page when you want filtering inside provider or YouTube frames. The C++ desktop version adds native WebView2 interception and can load a user-supplied unpacked extension from its portable data folder.
+The web shell can block its own popup attempts, but a normal web page cannot inject scripts into a cross-origin provider iframe. Install a browser blocker such as uBlock Origin normally in the browser running this page when you want filtering inside provider or YouTube frames. The C++ desktop version retains native popup interception but disables WebView2 extension loading in the v0.2.17 security rollback.
 
 
 ## v0.2.2
