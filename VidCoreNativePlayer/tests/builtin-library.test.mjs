@@ -8,6 +8,18 @@ import { DecompressionStream } from "node:stream/web";
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const nativeRoot = path.resolve(directory, "..");
 const repositoryRoot = path.resolve(nativeRoot, "..");
+const imported = JSON.parse(
+  fs.readFileSync(path.join(nativeRoot, "import.json"), "utf8")
+);
+const expectedBuiltIn = {
+  format: imported.format,
+  version: imported.version,
+  exportedAt: imported.exportedAt,
+  providers: imported.providers,
+  favorites: imported.favorites,
+  lists: imported.lists,
+  history: []
+};
 
 for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"]) {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
@@ -27,9 +39,14 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
   vm.runInContext(fs.readFileSync(path.join(root, "builtin-library.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(root, "builtin-additions.js"), "utf8"), context);
   const library = await context.VidCoreBuiltInLibraryPromise;
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(library)),
+    expectedBuiltIn,
+    "generated built-ins must exactly match import.json except for seeded history"
+  );
   assert.equal(library.version, 2);
-  assert.equal(library.favorites.length, 119);
-  assert.equal(library.lists.length, 25);
+  assert.equal(library.favorites.length, 236);
+  assert.equal(library.lists.length, 27);
   assert.equal(library.history.length, 0);
 
   const titles = new Set(library.favorites.map(entry => entry.title));
@@ -52,12 +69,19 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
     assert.ok(titles.has(title), `missing built-in title: ${title}`);
   }
   assert.ok(library.lists.some(list => list.name === "Fantasy"));
+  assert.ok(library.lists.some(list => list.name === "Avengers"));
+  assert.ok(library.lists.some(list => list.name === "Time"));
   const indianaJones = library.favorites.filter(entry =>
     entry.title === "Raiders of the Lost Ark" ||
     entry.title.startsWith("Indiana Jones")
   );
   assert.equal(indianaJones.length, 5);
   assert.ok(indianaJones.every(entry => entry.list === "Action"));
+  assert.equal(
+    library.favorites.filter(entry => entry.mode === "movie" && entry.id === "226674").length,
+    2,
+    "provider-specific copies from import.json must both remain seeded"
+  );
 }
 
 const storage = fs.readFileSync(path.join(nativeRoot, "assets", "storage.js"), "utf8");

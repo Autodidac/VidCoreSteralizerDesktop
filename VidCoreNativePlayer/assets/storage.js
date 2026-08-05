@@ -303,7 +303,8 @@
   const BUILTIN_PROVIDERS = Object.freeze([
     Object.freeze({ id: "vidcore", label: "VidCore", baseUrl: "https://vidcore.net" }),
     Object.freeze({ id: "ythd", label: "YTHD", baseUrl: "https://ythd.org/embed" }),
-    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" })
+    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" }),
+    Object.freeze({ id: "youtube", label: "YouTube", baseUrl: "https://www.youtube.com" })
   ]);
 
   function normalizeProviderUrl(value) {
@@ -320,22 +321,26 @@
     const known = new Set(catalog.map(provider => provider.baseUrl));
 
     for (const entry of entries) {
-      const baseUrl = normalizeProviderUrl(entry?.baseUrl);
-      if (!known.has(baseUrl)) {
-        known.add(baseUrl);
-        catalog.push({
-          id: `custom-${catalog.length}`,
-          label: new URL(baseUrl).hostname,
-          baseUrl
-        });
+      for (const linked of [entry, entry?.next]) {
+        if (!linked || typeof linked !== "object") continue;
+        const baseUrl = normalizeProviderUrl(linked.baseUrl);
+        if (!known.has(baseUrl)) {
+          known.add(baseUrl);
+          catalog.push({
+            id: "custom-" + catalog.length,
+            label: new URL(baseUrl).hostname,
+            baseUrl
+          });
+        }
       }
     }
 
     return catalog;
   }
 
-  function compactEntry(entry, providers) {
-    const baseUrl = normalizeProviderUrl(entry?.baseUrl);
+  function compactLinkedEntry(entry, providers) {
+    if (!entry || typeof entry !== "object" || !entry.id) return null;
+    const baseUrl = normalizeProviderUrl(entry.baseUrl);
     const provider = Math.max(
       0,
       providers.findIndex(candidate => candidate.baseUrl === baseUrl)
@@ -349,8 +354,29 @@
     return provider === 0 ? rest : { ...rest, provider };
   }
 
+  function compactEntry(entry, providers) {
+    const baseUrl = normalizeProviderUrl(entry?.baseUrl);
+    const provider = Math.max(
+      0,
+      providers.findIndex(candidate => candidate.baseUrl === baseUrl)
+    );
+    const {
+      baseUrl: ignoredBaseUrl,
+      key: ignoredKey,
+      provider: ignoredProvider,
+      next,
+      ...rest
+    } = entry;
+    const compacted = provider === 0 ? rest : { ...rest, provider };
+    const compactedNext = compactLinkedEntry(next, providers);
+    return compactedNext ? { ...compacted, next: compactedNext } : compacted;
+  }
+
   function recordKey(entry) {
     const baseUrl = normalizeProviderUrl(entry.baseUrl);
+    if (entry.mode === "youtube") {
+      return `${baseUrl}|youtube|${entry.id}`;
+    }
     return entry.mode === "tv"
       ? `${baseUrl}|tv|${entry.id}|${entry.season ?? 1}|${entry.episode ?? 1}`
       : `${baseUrl}|movie|${entry.id}`;
@@ -372,6 +398,20 @@
       baseUrl: normalizeProviderUrl(baseUrl)
     };
     delete expanded.provider;
+    if (expanded.next && typeof expanded.next === "object" && expanded.next.id) {
+      const nextReference = Number.isInteger(expanded.next.provider)
+        ? expanded.next.provider
+        : Number.parseInt(expanded.next.provider, 10);
+      const nextBaseUrl = expanded.next.baseUrl ||
+        providers[Number.isInteger(nextReference) ? nextReference : 0]?.baseUrl;
+      expanded.next = {
+        ...expanded.next,
+        baseUrl: normalizeProviderUrl(nextBaseUrl)
+      };
+      delete expanded.next.provider;
+    } else {
+      delete expanded.next;
+    }
     const legacyFavorite = expanded.list === "Favorites";
     expanded.favorite = Boolean(expanded.favorite || legacyFavorite);
     expanded.list = legacyFavorite

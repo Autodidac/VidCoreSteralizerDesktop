@@ -74,6 +74,27 @@ assert.deepEqual(
   }
 );
 
+assert.deepEqual(
+  JSON.parse(JSON.stringify(metadata.normalizeEntry({
+    baseUrl: "https://vidcore.net",
+    mode: "youtube",
+    id: "https://youtu.be/dQw4w9WgXcQ?t=1"
+  }))),
+  {
+    baseUrl: "https://www.youtube.com",
+    mode: "youtube",
+    id: "dQw4w9WgXcQ"
+  }
+);
+
+assert.equal(
+  metadata.entryKey({
+    baseUrl: "https://www.youtube.com",
+    mode: "youtube",
+    id: "dQw4w9WgXcQ"
+  }),
+  "https://www.youtube.com|youtube|dQw4w9WgXcQ"
+);
 assert.match(
   metadata.buildPlayerUrl({
     baseUrl: "https://vidcore.net",
@@ -135,6 +156,22 @@ assert.equal(
     "https://upload.wikimedia.org/example-film-poster.jpg"
   ),
   false
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "youtube", id: "dQw4w9WgXcQ" },
+    { youtube: "dQw4w9WgXcQ" },
+    "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+  ),
+  false
+);
+assert.equal(
+  metadata.isLikelyBadArtwork(
+    { mode: "youtube", id: "dQw4w9WgXcQ" },
+    { youtube: "dQw4w9WgXcQ" },
+    "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg"
+  ),
+  true
 );
 const catalogs = metadata.externalCatalogUrls(
   { mode: "tv", id: "1" },

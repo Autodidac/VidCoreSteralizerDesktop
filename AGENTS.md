@@ -30,7 +30,7 @@ Before changing anything, read these files in order:
 Keep these behaviors unless the user explicitly changes them:
 
 - Visible application name: `Shielded Native Stream Player`.
-- Provider order: VidCore, YTHD, VidUp.
+- Provider order: VidCore, YTHD, VidUp, then YouTube.
 - Main Play uses the currently selected provider.
 - Saved-card Play uses the provider stored with that entry.
 - The compact current/resolve card stays above the provider/play controls.
@@ -45,8 +45,8 @@ Keep these behaviors unless the user explicitly changes them:
 
 The built-in seed currently represents the non-destructive union of the supplied August 4 and August 5 backups:
 
-- 119 provider-aware saved entries.
-- 25 named lists.
+- 236 provider-aware saved entries.
+- 27 named lists.
 - Zero seeded history entries.
 
 Seed updates are non-destructive:
@@ -70,6 +70,8 @@ The shipping native executable must not regain the behavior removed after the v0
 - No interception and saving of remote image response bodies.
 - No automatic native artwork-file deletion or pruning implementation.
 - No instructions asking users to disable Defender, add exclusions, or bypass a detection.
+- Optional unpacked browser extensions must be user-supplied and loaded only through supported WebView2 profile APIs.
+- The application must not bundle, download, update, modify, or delete those extension files.
 
 The safe native baseline uses WebView2 normally and stores its profile, HTTP cache, IndexedDB, localStorage, settings, and popup history under `data/` beside the executable. User-supplied artwork under `data/artwork/` may be enumerated and displayed locally, but it must never be downloaded, rewritten, pruned, or deleted by the application.
 
@@ -148,6 +150,7 @@ When a release is reported as blocked or detected:
 - Authenticode signing or Microsoft Store distribution is still needed for publisher identity and reputation.
 - Exact playback position requires provider-supported cross-origin messaging.
 - Provider availability and stream quality remain controlled by each provider.
-- Browser-hosted code cannot inject popup protection into a cross-origin provider iframe.
+- Browser-hosted code cannot inject popup protection or content filtering into a cross-origin provider iframe.
+- Native YouTube filtering depends on the user-supplied extension, WebView2 Runtime support, and current filter behavior.
 - Metadata can remain incomplete when no matching Wikidata or English Wikipedia record exists.
 - Optional cloud synchronization requires a user-owned backend or account provider.

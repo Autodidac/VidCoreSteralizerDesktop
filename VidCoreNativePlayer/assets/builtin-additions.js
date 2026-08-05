@@ -411,6 +411,7 @@
 
   function identity(entry) {
     return [
+      Number.isInteger(entry.provider) ? entry.provider : 0,
       entry.mode,
       entry.id,
       entry.mode === "tv" ? entry.season ?? 1 : "",
@@ -444,7 +445,7 @@
 
     return {
       ...payload,
-      exportedAt: "2026-08-05T14:12:00.000Z",
+      exportedAt: payload?.exportedAt || "2026-08-05T14:12:00.000Z",
       favorites: mergedFavorites,
       lists: mergedLists
     };

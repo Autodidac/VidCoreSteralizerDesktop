@@ -177,6 +177,7 @@ button {
 }
 
 .field > span,
+.volume-row > span,
 .zoom-row > span,
 .eyebrow {
   color: var(--muted);
@@ -442,9 +443,9 @@ textarea:focus {
   gap: 8px;
 }
 
+.volume-row,
 .zoom-row {
   display: grid;
-  grid-template-columns: auto 38px minmax(160px, 1fr) 38px 54px;
   align-items: center;
   gap: 10px;
   margin-top: 11px;
@@ -452,12 +453,22 @@ textarea:focus {
   border-top: 1px solid var(--border);
 }
 
+.volume-row {
+  grid-template-columns: auto minmax(180px, 1fr) 54px;
+}
+
+.zoom-row {
+  grid-template-columns: auto 38px minmax(160px, 1fr) 38px 54px;
+}
+
+.volume-row input,
 .zoom-row input {
   min-height: auto;
   padding: 0;
   accent-color: var(--primary);
 }
 
+.volume-row output,
 .zoom-row output {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -729,7 +740,7 @@ textarea:focus {
 }
 
 dialog {
-  width: min(520px, calc(100vw - 36px));
+  width: min(640px, calc(100vw - 36px));
   padding: 0;
   border: 1px solid var(--border-strong);
   border-radius: 18px;
@@ -758,6 +769,33 @@ dialog::backdrop {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.dialog-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.dialog-section legend {
+  padding: 0 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.dialog-grid .wide-field {
+  grid-column: 1 / -1;
 }
 
 .split-actions {

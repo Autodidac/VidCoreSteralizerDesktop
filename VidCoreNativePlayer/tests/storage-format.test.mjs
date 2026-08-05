@@ -32,7 +32,13 @@ await context.VidCoreStorage.put(S.favorites, {
   id: "tt0466342",
   title: "Date Movie",
   list: "Comedy",
-  favorite: true
+  favorite: true,
+  next: {
+    baseUrl: "https://example-provider.test/embed",
+    mode: "movie",
+    id: "next-42",
+    title: "The Sequel"
+  }
 });
 const backup = await context.VidCoreStorage.exportData();
 assert.equal(backup.version, 2);
@@ -43,6 +49,10 @@ assert.deepEqual(
 assert.equal(backup.favorites[0].provider, 1);
 assert.equal("baseUrl" in backup.favorites[0], false);
 assert.equal("key" in backup.favorites[0], false);
+assert.equal(backup.providers[4].baseUrl, "https://example-provider.test/embed");
+assert.equal(backup.favorites[0].next.provider, 4);
+assert.equal("baseUrl" in backup.favorites[0].next, false);
+assert.equal(backup.favorites[0].next.title, "The Sequel");
 
 await context.VidCoreStorage.clear(S.favorites);
 await context.VidCoreStorage.importData({
@@ -70,4 +80,7 @@ imported = await context.VidCoreStorage.getAll(S.favorites);
 assert.equal(imported[0].baseUrl, "https://ythd.org/embed");
 assert.equal(imported[0].favorite, true);
 assert.equal(imported[0].list, "Comedy");
+assert.equal(imported[0].next.baseUrl, "https://example-provider.test/embed");
+assert.equal(imported[0].next.id, "next-42");
+assert.equal(imported[0].next.title, "The Sequel");
 console.log("Compact provider backup and legacy import checks passed.");

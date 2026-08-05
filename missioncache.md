@@ -110,8 +110,22 @@
 - [x] Review the supplied C++23 IMDb resolver and preserve the Defender-safe shipping boundary by excluding its WinHTTP downloader and hidden page automation.
 - [x] Stage v0.2.15 with synchronized Native/Web behavior, 119 built-in entries, tests, and release metadata.
 
+- [x] Sync to origin/main before implementation and incorporate the newly supplied import.json.
+- [x] Generate synchronized Native/Web built-in libraries from import.json with 236 provider-aware entries, 27 lists, and zero seeded history.
+- [x] Add YouTube as a distinct fourth playback mode using the official embed player and oEmbed metadata.
+- [x] Add persistent external volume control through provider messaging plus native WebView2 audio-session control.
+- [x] Change Previous and Next to navigate the active selected/filtered Library list with wraparound while retaining Shift-bracket scanner shortcuts.
+- [x] Add editable display titles and provider-aware next-in-series metadata to Edit/Save and preserve it through compact backup round trips.
+- [x] Add a supported WebView2 unpacked-extension loader for user-supplied uBlock Origin without bundling, downloading, updating, modifying, or deleting extension files.
+- [x] Runtime-test extension registration with the official uBlock Origin 1.73.0 Chromium archive after verifying its published SHA-256.
+- [x] Add regression coverage for YouTube routing, thumbnail identity, provider controls, imported defaults, linked metadata, and Native/Web asset synchronization.
+- [x] Stage v0.2.16 with synchronized Native/Web assets, 236 provider-aware defaults across 27 lists, local MSVC validation, a successful headless browser startup check, and a clean local Defender scan.
+
 ## Open / provider-limited
 
+- [ ] The resolver revision referenced in chat is not present in the repository or reachable history; integrate it only after its exact source is available and passes the Defender-safe boundary.
+- [ ] Verify real YouTube ad filtering with the affected user's current WebView2 Runtime and current uBlock filters; extension registration is verified, but provider behavior can change.
+- [ ] Scan and verify the next downloadable native candidate with the affected user's current Microsoft Defender signatures before recommending it.
 - [ ] Verify the downloadable v0.2.15 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
