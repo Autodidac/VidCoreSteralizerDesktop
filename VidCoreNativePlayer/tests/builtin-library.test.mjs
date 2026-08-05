@@ -28,7 +28,7 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
   vm.runInContext(fs.readFileSync(path.join(root, "builtin-additions.js"), "utf8"), context);
   const library = await context.VidCoreBuiltInLibraryPromise;
   assert.equal(library.version, 2);
-  assert.equal(library.favorites.length, 111);
+  assert.equal(library.favorites.length, 114);
   assert.equal(library.lists.length, 25);
   assert.equal(library.history.length, 0);
 
@@ -39,7 +39,10 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
     "Mating Season",
     "Reacher",
     "Dexter: Resurrection",
-    "The Sandman"
+    "The Sandman",
+    "Cape Fear",
+    "TV 298714 · S1 E1",
+    "TV 319179 · S1 E1"
   ]) {
     assert.ok(titles.has(title), `missing built-in title: ${title}`);
   }

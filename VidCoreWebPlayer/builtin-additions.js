@@ -198,6 +198,87 @@
       "watched": false,
       "createdAt": "2026-08-04T14:14:05.078Z",
       "updatedAt": "2026-08-04T14:14:05.078Z"
+    },
+    {
+      "mode": "tv",
+      "id": "277439",
+      "season": 1,
+      "episode": 1,
+      "title": "Cape Fear",
+      "description": "American television series",
+      "year": "",
+      "image": "https://commons.wikimedia.org/wiki/Special:FilePath/Cape%20Fear%20%28tv%20series%20logo%29.svg",
+      "imdb": "tt34675596",
+      "tmdb": "277439",
+      "genres": [
+        "crime television series",
+        "drama television series",
+        "thriller television series"
+      ],
+      "genreUris": [
+        "http://www.wikidata.org/entity/Q9335577",
+        "http://www.wikidata.org/entity/Q1366112",
+        "http://www.wikidata.org/entity/Q67175872"
+      ],
+      "wikidata": "http://www.wikidata.org/entity/Q134126367",
+      "article": "https://en.wikipedia.org/wiki/Cape_Fear_(TV_series)",
+      "wikipedia": "",
+      "resolutionStatus": "resolved",
+      "resolvedAt": "2026-08-04T17:43:28.163Z",
+      "list": "Crime",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-04T17:29:54.566Z",
+      "updatedAt": "2026-08-04T17:43:28.163Z"
+    },
+    {
+      "mode": "tv",
+      "id": "298714",
+      "season": 1,
+      "episode": 1,
+      "title": "TV 298714 · S1 E1",
+      "description": "No matching Wikidata metadata was found.",
+      "year": "",
+      "image": "",
+      "imdb": "",
+      "tmdb": "298714",
+      "genres": [],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "not-found",
+      "resolvedAt": "2026-08-04T17:43:27.880Z",
+      "list": "Other",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-04T17:29:04.129Z",
+      "updatedAt": "2026-08-04T17:43:27.925Z"
+    },
+    {
+      "mode": "tv",
+      "id": "319179",
+      "season": 1,
+      "episode": 1,
+      "title": "TV 319179 · S1 E1",
+      "description": "No matching Wikidata metadata was found.",
+      "year": "",
+      "image": "",
+      "imdb": "",
+      "tmdb": "319179",
+      "genres": [],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "not-found",
+      "resolvedAt": "2026-08-04T17:51:21.995Z",
+      "list": "Documentary",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-04T17:51:13.657Z",
+      "updatedAt": "2026-08-04T17:51:22.089Z",
+      "provider": 1
     }
   ];
 
@@ -243,7 +324,7 @@
 
     return {
       ...payload,
-      exportedAt: "2026-08-04T15:40:29.216Z",
+      exportedAt: "2026-08-05T06:57:40.704Z",
       favorites: mergedFavorites,
       lists: mergedLists
     };

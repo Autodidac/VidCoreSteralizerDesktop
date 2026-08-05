@@ -85,7 +85,10 @@ for (const title of [
   "Mating Season",
   "Reacher",
   "Dexter: Resurrection",
-  "The Sandman"
+  "The Sandman",
+  "Cape Fear",
+  "TV 298714 · S1 E1",
+  "TV 319179 · S1 E1"
 ]) {
   assert.ok(additions.includes(`"title": "${title}"`));
 }

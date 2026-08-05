@@ -42,9 +42,9 @@ Keep these behaviors unless the user explicitly changes them:
 
 ## Library and backup invariants
 
-The built-in seed currently represents the union of the supplied August 4 backups:
+The built-in seed currently represents the non-destructive union of the supplied August 4 and August 5 backups:
 
-- 111 provider-aware saved entries.
+- 114 provider-aware saved entries.
 - 25 named lists.
 - Zero seeded history entries.
 
