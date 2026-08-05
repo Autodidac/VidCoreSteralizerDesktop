@@ -1,0 +1,26 @@
+name: Cleanup v0.2.15 branches
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/cleanup-v0.2.15-trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cleanup:
+    if: github.head_ref == 'release-v0.2.15-cleanup'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove temporary branches and close trigger PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/agent/v0.2.15-list-defaults" || true
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/release-v0.2.15-trigger" || true
+          gh pr close "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --delete-branch
