@@ -1,0 +1,22 @@
+name: Dispatch v0.2.14 release
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/release-v0.2.14-trigger
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: github.head_ref == 'release-v0.2.14-trigger'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch normal release workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main
