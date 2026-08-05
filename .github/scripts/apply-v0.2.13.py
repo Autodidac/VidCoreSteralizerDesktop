@@ -197,18 +197,6 @@ agents_text = agents_text.replace(
 )
 agents.write_text(agents_text, encoding="utf-8")
 
-workflow = ROOT / ".github/workflows/release.yml"
-workflow_text = workflow.read_text(encoding="utf-8")
-workflow_text = workflow_text.replace(
-    'throw "VERSION must contain a semantic version such as 0.2.11."',
-    'throw "VERSION must contain a semantic version such as 1.2.3."',
-)
-workflow_text = workflow_text.replace(
-    "111 provider-aware built-in entries across 25 lists",
-    "114 provider-aware built-in entries across 25 lists",
-)
-workflow.write_text(workflow_text, encoding="utf-8")
-
 mission = ROOT / "missioncache.md"
 mission_text = mission.read_text(encoding="utf-8")
 completed_lines = [
