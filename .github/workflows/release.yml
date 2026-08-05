@@ -59,7 +59,7 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "VERSION must contain a semantic version such as 0.2.7."
+            throw "VERSION must contain a semantic version such as 0.2.11."
           }
           $cmake = Get-Content VidCoreNativePlayer/CMakeLists.txt -Raw
           if ($cmake -notmatch "VERSION\s+$([regex]::Escape($version))") {
@@ -111,7 +111,7 @@ jobs:
           "@ | Set-Content security/SECURITY_REPORT.txt -Encoding utf8
           "DEFENDER_SCAN=$scanResult" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Package native binary, source fallback, and web player
+      - name: Package native and web players
         shell: pwsh
         run: |
           $dist = Join-Path $PWD 'dist'
@@ -127,22 +127,12 @@ jobs:
           @('@echo off','cd /d "%~dp0"','start "" VidCoreNativePlayer.exe') |
             Set-Content (Join-Path $nativeStage 'run.bat') -Encoding ascii
 
-          $sourceStage = Join-Path $dist 'ShieldedNativeStreamPlayer-source'
-          New-Item -ItemType Directory -Force -Path $sourceStage | Out-Null
-          foreach ($item in @('CMakeLists.txt','CMakePresets.json','README.md','build.bat','clean.bat','run.bat','assets','scripts','src','tests')) {
-            $source = Join-Path 'VidCoreNativePlayer' $item
-            if (Test-Path $source) { Copy-Item $source $sourceStage -Recurse }
-          }
-          Copy-Item 'security/SECURITY_REPORT.txt' $sourceStage
-
           $webStage = Join-Path $dist 'VidCoreWebPlayer'
           Copy-Item 'VidCoreWebPlayer' $webStage -Recurse
 
           $nativeZip = Join-Path $dist "ShieldedNativeStreamPlayer-v$env:VERSION-windows-x64.zip"
-          $sourceZip = Join-Path $dist "ShieldedNativeStreamPlayer-v$env:VERSION-source.zip"
           $webZip = Join-Path $dist "VidCoreWebPlayer-v$env:VERSION.zip"
           Compress-Archive -Path $nativeStage -DestinationPath $nativeZip -CompressionLevel Optimal
-          Compress-Archive -Path $sourceStage -DestinationPath $sourceZip -CompressionLevel Optimal
           Compress-Archive -Path $webStage -DestinationPath $webZip -CompressionLevel Optimal
           Copy-Item 'security/SECURITY_REPORT.txt' $dist
 
@@ -155,17 +145,18 @@ jobs:
           @"
           ## Shielded Native Stream Player v$env:VERSION
 
-          This release keeps the Defender-safe native host: no native WinHTTP page scraper, custom image downloader, or automatic image-file deletion code is included. WebView2 keeps its profile, normal browser cache, IndexedDB, settings, and popup history in `data/` beside the executable.
+          The native host remains on the Defender-safe network profile: it contains no native WinHTTP page scraper, custom native image downloader, hidden IMDb/TMDB WebView2 resolver, remote image-response capture, or automatic artwork-file deletion code.
 
           The Windows executable was scanned during this release workflow. Result: $env:DEFENDER_SCAN
 
-          The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A source-build ZIP is included so the native executable can be built locally with Visual Studio 2022.
+          The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A real antivirus detection is treated separately as a release blocker and should not be bypassed.
 
-          v$env:VERSION swaps the compact resolve card above the provider/play controls, adds safe custom-list deletion, hides or prunes empty custom lists, and preserves the complete 108-title built-in default library from the latest supplied backup.
+          Shared product state remains synchronized across Native and Web: VidCore, YTHD, and VidUp provider routing; compact resolve card above provider controls; custom-list deletion that preserves titles in Favorites; 111 provider-aware built-in entries across 25 lists; and zero fabricated built-in history.
 
-          ### Assets
+          GitHub automatically supplies `Source code (zip)` and `Source code (tar.gz)` for this tag. No redundant custom source archive is attached.
+
+          ### Project assets
           - `ShieldedNativeStreamPlayer-v$env:VERSION-windows-x64.zip`
-          - `ShieldedNativeStreamPlayer-v$env:VERSION-source.zip`
           - `VidCoreWebPlayer-v$env:VERSION.zip`
           - `SECURITY_REPORT.txt`
           - `SHA256SUMS.txt`
@@ -187,7 +178,6 @@ jobs:
             --notes-file dist/RELEASE_NOTES.md `
             --latest `
             dist/ShieldedNativeStreamPlayer-v$env:VERSION-windows-x64.zip `
-            dist/ShieldedNativeStreamPlayer-v$env:VERSION-source.zip `
             dist/VidCoreWebPlayer-v$env:VERSION.zip `
             dist/SECURITY_REPORT.txt `
             dist/SHA256SUMS.txt
