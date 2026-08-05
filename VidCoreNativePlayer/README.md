@@ -141,11 +141,10 @@ Artwork resolution rejects diagrams, unrelated subject images, actor/director po
 The native executable does not contain a custom page scraper, native image downloader, or automatic image-file deletion code. WebView2 keeps its browser profile, HTTP cache, IndexedDB, localStorage, settings, and popup history under `data/` beside the executable. This keeps all runtime data portable without adding downloader behavior to the unsigned EXE.
 
 
-## v0.2.9 IMDb and TMDB artwork gallery
+## v0.2.10 Defender-safe rollback
 
-- Metadata names and identifiers remain resolved through the existing metadata system.
-- The native player opens the title pages in a hidden WebView2 browser, reads poster `<img>` elements, and chooses the smallest usable `srcset` candidate.
-- IMDb primary and media-index posters and TMDB primary and poster-gallery images can be flipped through from the current metadata card.
-- The first IMDb poster is preferred, with TMDB used when IMDb does not provide a usable image.
-- Selected images are captured from WebView2 responses and written under `cache/` beside the executable. The native host does not use WinHTTP or a custom HTTP client.
-- Cached variants are reused by media identity, removed when the final saved entry is deleted, and pruned when no saved media references them.
+- The v0.2.9 hidden IMDb/TMDB WebView2 artwork resolver and response-to-file cache were removed after a real-user Microsoft Defender detection.
+- The shipping executable is restored to the v0.2.8 native network profile: no hidden catalog browser, image-response capture, custom artwork downloader, or automatic artwork-file lifecycle.
+- The compact blue layout, merged defaults, provider routing, list deletion, and portable WebView2 profile remain intact.
+- IMDb/TMDB poster-gallery work remains in the mission cache until it can be delivered without endpoint-protection detections.
+

@@ -1,9 +1,7 @@
 module;
 
 #include <algorithm>
-#include <array>
 #include <filesystem>
-#include <memory>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -17,7 +15,6 @@ module;
 
 export module vidcore.webview;
 
-import vidcore.artwork_resolver;
 import vidcore.blocklist;
 import vidcore.uri;
 
@@ -83,7 +80,6 @@ public:
                                 configure_settings();
                                 register_events();
                                 resize();
-                                initialize_artwork_resolver();
                                 install_popup_guard();
                                 return S_OK;
                             }
@@ -109,7 +105,6 @@ public:
     }
 
     void shutdown() {
-        artwork_resolver_.reset();
         if (controller_) {
             controller_->Close();
         }
@@ -343,22 +338,6 @@ private:
         );
     }
 
-    void initialize_artwork_resolver() {
-        artwork_resolver_ = std::make_unique<ArtworkResolver>(
-            window_,
-            environment_.Get(),
-            executable_directory() / L"cache",
-            [this](const std::wstring& message) {
-                post_event(message);
-            }
-        );
-        artwork_resolver_->initialize(
-            [this](std::wstring_view message) {
-                report_error(message);
-            }
-        );
-    }
-
     [[nodiscard]] static bool host_matches(
         std::wstring_view host,
         std::wstring_view domain
@@ -409,70 +388,6 @@ private:
                 ? std::wstring{}
                 : payload.substr(next + 1);
             record_blocked(kind, target);
-            return;
-        }
-
-        if (command == L"resolve-image") {
-            std::array<std::wstring, 5> fields{};
-            std::size_t field_index = 0;
-            std::size_t start = 0;
-            while (field_index < fields.size()) {
-                const auto next = payload.find(L'|', start);
-                fields[field_index++] = payload.substr(
-                    start,
-                    next == std::wstring::npos
-                        ? std::wstring::npos
-                        : next - start
-                );
-                if (next == std::wstring::npos) break;
-                start = next + 1;
-            }
-            if (artwork_resolver_) {
-                artwork_resolver_->discover(
-                    fields[0],
-                    fields[1],
-                    fields[2],
-                    fields[3],
-                    fields[4]
-                );
-            }
-            return;
-        }
-
-        if (command == L"cache-image") {
-            std::array<std::wstring, 5> fields{};
-            std::size_t field_index = 0;
-            std::size_t start = 0;
-            while (field_index < fields.size()) {
-                const auto next = payload.find(L'|', start);
-                fields[field_index++] = payload.substr(
-                    start,
-                    next == std::wstring::npos
-                        ? std::wstring::npos
-                        : next - start
-                );
-                if (next == std::wstring::npos) break;
-                start = next + 1;
-            }
-            if (artwork_resolver_) {
-                artwork_resolver_->cache(
-                    fields[0],
-                    fields[1],
-                    fields[2],
-                    fields[3],
-                    fields[4]
-                );
-            }
-            return;
-        }
-
-        if (command == L"delete-image-cache") {
-            if (artwork_resolver_) artwork_resolver_->remove(payload);
-            return;
-        }
-
-        if (command == L"prune-image-cache") {
-            if (artwork_resolver_) artwork_resolver_->prune(payload);
             return;
         }
 
@@ -583,7 +498,6 @@ private:
     std::wstring home_url_;
     PopupBlocklist blocklist_;
     ErrorHandler error_handler_;
-    std::unique_ptr<ArtworkResolver> artwork_resolver_;
 
     Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment_;
     Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller_;

@@ -14,10 +14,6 @@ const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
   "utf8"
 );
-const resolver = fs.readFileSync(
-  path.join(root, "src", "vidcore.artwork_resolver.ixx"),
-  "utf8"
-);
 
 for (const id of [
   "previousButton",
@@ -36,11 +32,7 @@ for (const id of [
   "fastflixButton",
   "seeflixButton",
   "movies123Button",
-  "deleteListButton",
-  "previousArtworkButton",
-  "imdbArtworkButton",
-  "tmdbArtworkButton",
-  "nextArtworkButton"
+  "deleteListButton"
 ]) {
   assert.match(html, new RegExp(`id="${id}"`));
 }
@@ -107,21 +99,7 @@ assert.match(webview, /fastflix\.to/);
 assert.match(webview, /123moviesfree\.net/);
 assert.match(webview, /executable_directory/);
 assert.doesNotMatch(webview, /blocked-count/);
-assert.match(webview, /resolve-image/);
-assert.match(webview, /cache-image/);
-assert.match(webview, /delete-image-cache/);
-assert.match(webview, /prune-image-cache/);
-assert.match(webview, /ArtworkResolver/);
-assert.match(resolver, /m\.media-amazon\.com/);
-assert.match(resolver, /media\.themoviedb\.org/);
-assert.match(resolver, /srcset/);
-assert.match(resolver, /candidates\.sort/);
-assert.match(resolver, /mediaindex/);
-assert.match(resolver, /images\/posters/);
-assert.match(app, /artwork-sources/);
-assert.match(app, /image-cached/);
-assert.match(app, /stepArtwork/);
-assert.doesNotMatch(resolver, /WinHttpOpen|WinHttpSendRequest/);
+assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
 assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);
 
 console.log("Static feature, merged defaults, popup-shield, and Defender-safe host checks passed.");

@@ -75,15 +75,17 @@
 - [x] Publish release `v0.2.8` with the complete merged default union.
 
 
-- [x] Resolve IMDb title and media-index poster images through a hidden WebView2 browser instead of a native HTTP scraper.
-- [x] Resolve TMDB title and poster-gallery images through the same browser path.
-- [x] Select the smallest usable `srcset` candidate, including IMDb width descriptors and TMDB 1x/2x descriptors.
-- [x] Add current-card controls to switch between IMDb and TMDB and flip through multiple poster candidates.
-- [x] Cache selected WebView2 image responses under `cache/` beside the executable without WinHTTP.
-- [x] Reuse cached variants by media identity and restore delete/prune lifecycle for unreferenced artwork.
-- [x] Publish release `v0.2.9` with the IMDb/TMDB artwork gallery and portable cache.
+
+
+- [x] Treat the real-user Microsoft Defender detection on v0.2.9 as a release blocker.
+- [x] Remove the hidden IMDb/TMDB WebView2 resolver, image-response capture, and portable artwork-file cache from the shipping native executable.
+- [x] Restore the known Defender-safe v0.2.8 native network profile while retaining the compact layout, merged defaults, provider logic, and list management.
 
 ## Open / provider-limited
+
+
+- [ ] Publish v0.2.10 and verify the downloadable Windows artifact no longer triggers the reported Defender detection.
+- [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
