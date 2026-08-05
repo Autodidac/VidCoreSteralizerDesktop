@@ -75,16 +75,17 @@
 - [x] Restore the known Defender-safe v0.2.8 native network profile while retaining the compact layout, merged defaults, provider logic, and list management.
 - [x] Publish release `v0.2.10` after the rollback passed validation, MSVC build, packaging, and the release-runner Defender scan.
 
-
 - [x] Add a root `AGENTS.md` with durable product invariants, security boundaries, development procedure, release procedure, incident handling, and repository hygiene.
 - [x] Remove the redundant custom native source-build ZIP from release packaging and rely on GitHub's automatic source ZIP and TAR.GZ archives.
 - [x] Generalize release notes and asset packaging so they describe the current 111-entry, 25-list, zero-history state without stale version-specific claims.
+- [x] Publish `v0.2.11` with only the native Windows ZIP, Web-player ZIP, security report, and checksum manifest as custom release assets.
+- [x] Confirm the v0.2.11 validation, MSVC build, Defender scan, packaging, and publication workflow completed successfully.
+- [x] Confirm no open pull requests remain after the v0.2.11 release.
 
 ## Open / provider-limited
 
-- [ ] Publish v0.2.11 with only the native Windows ZIP, Web-player ZIP, security report, and checksum manifest as custom release assets.
-
-- [ ] Verify v0.2.10 on the affected user's local Microsoft Defender installation; the GitHub runner cannot reproduce every endpoint signature state.
+- [ ] Verify the downloadable v0.2.11 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
+- [ ] Delete obsolete `bootstrap-v0.2.9`, `release-v0.2.9`, and `release-v0.2.9-trigger` branches.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
