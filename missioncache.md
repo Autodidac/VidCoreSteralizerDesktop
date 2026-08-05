@@ -85,12 +85,15 @@
 - [x] Add the three genuinely unseen TV defaults: Cape Fear (TMDB 277439), TMDB 298714 S1E1, and TMDB 319179 S1E1.
 - [x] Preserve Reacher, The Sandman, The Gentleman Thief, all prior defaults, all 25 lists, and zero seeded history while expanding the built-in library to 114 entries.
 - [x] Preserve the failed unpublished v0.2.12 attempt in release history and supersede it with the corrected v0.2.13 release path.
+- [x] Publish `v0.2.13` with the 114-entry non-destructive August 4/5 default union.
+- [x] Confirm the v0.2.13 validation, MSVC build, Microsoft Defender runner scan, packaging, and publication workflow completed successfully.
+- [x] Delete obsolete v0.2.9, v0.2.12 recovery, and v0.2.13 trigger branches so only `main` remains.
+- [x] Close the temporary v0.2.13 trigger pull request without merging its trigger file.
+- [x] Restore the normal `VERSION`-only release workflow after publication while retaining the 114-entry release notes and corrected asset policy.
 
 ## Open / provider-limited
 
-- [ ] Publish v0.2.13 with the 114-entry non-destructive August 4/5 default union.
 - [ ] Verify the downloadable v0.2.13 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
-- [ ] Delete obsolete `bootstrap-v0.2.9`, `release-v0.2.9`, and `release-v0.2.9-trigger` branches.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
