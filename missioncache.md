@@ -120,13 +120,15 @@
 - [x] Runtime-test extension registration with the official uBlock Origin 1.73.0 Chromium archive after verifying its published SHA-256.
 - [x] Add regression coverage for YouTube routing, thumbnail identity, provider controls, imported defaults, linked metadata, and Native/Web asset synchronization.
 - [x] Stage v0.2.16 with synchronized Native/Web assets, 236 provider-aware defaults across 27 lists, local MSVC validation, a successful headless browser startup check, and a clean local Defender scan.
+- [x] Publish v0.2.16 with YouTube playback, user-supplied uBlock extension loading, native/provider volume, active-list navigation, next-in-series metadata, and the 236-entry import union.
+- [x] Confirm the v0.2.16 validation, MSVC build, GitHub-runner Defender scan, packaging, checksums, and release publication completed successfully.
+- [x] Verify the downloadable v0.2.16 native ZIP with the affected user's current Microsoft Defender signatures and confirm no detection.
+- [x] Supersede the unverified v0.2.15 Windows artifact with the locally verified v0.2.16 release.
 
 ## Open / provider-limited
 
 - [ ] The resolver revision referenced in chat is not present in the repository or reachable history; integrate it only after its exact source is available and passes the Defender-safe boundary.
 - [ ] Verify real YouTube ad filtering with the affected user's current WebView2 Runtime and current uBlock filters; extension registration is verified, but provider behavior can change.
-- [ ] Scan and verify the next downloadable native candidate with the affected user's current Microsoft Defender signatures before recommending it.
-- [ ] Verify the downloadable v0.2.15 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
