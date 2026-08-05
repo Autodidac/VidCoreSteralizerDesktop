@@ -95,6 +95,7 @@
 - [x] Convert Favorites into a non-exclusive overlay so titles remain in their normal categories, with legacy Favorites-only records migrated to Uncategorized.
 - [x] Repair Related with automatic current-title hydration, public genre-label fallback, and local-library genre/category fallback.
 - [x] Tighten artwork acceptance around sequel numbers, conflicting years, article media type, book/title-page imagery, historical source material, soundtrack/album art, and unrelated posters.
+- [x] Resolve an exact Wikidata entity's title before validating its artwork so valid title-matching posters are not compared against generic Movie/TV ID placeholders.
 
 ## Open / provider-limited
 

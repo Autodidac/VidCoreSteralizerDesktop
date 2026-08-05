@@ -274,27 +274,33 @@
     const article = articleName
       ? `https://en.wikipedia.org/wiki/${encodeURIComponent(articleName.replaceAll(" ", "_"))}`
       : "";
+    const resolvedTitle = isGenericTitle(entry, metadata.title)
+      ? entity?.labels?.en?.value || metadata.title
+      : metadata.title;
+    const resolvedDescription =
+      metadata.description ||
+      entity?.descriptions?.en?.value ||
+      "";
+    const artworkMetadata = {
+      ...metadata,
+      title: resolvedTitle,
+      description: resolvedDescription
+    };
+    const candidates = [
+      { kind: "poster", value: commonsImageUrl(posterName) },
+      { kind: "logo", value: commonsImageUrl(logoName) },
+      { kind: "image", value: commonsImageUrl(imageName) }
+    ];
+    const retainedImage = metadata.image &&
+      !isLikelyBadArtwork(entry, artworkMetadata, metadata.image)
+        ? metadata.image
+        : "";
 
     return {
       ...metadata,
-      title: isGenericTitle(entry, metadata.title)
-        ? entity?.labels?.en?.value || metadata.title
-        : metadata.title,
-      description:
-        metadata.description ||
-        entity?.descriptions?.en?.value ||
-        "",
-      image: isLikelyBadArtwork(entry, metadata, metadata.image)
-        ? selectArtworkImage(entry, metadata, [
-            { kind: "poster", value: commonsImageUrl(posterName) },
-            { kind: "logo", value: commonsImageUrl(logoName) },
-            { kind: "image", value: commonsImageUrl(imageName) }
-          ])
-        : metadata.image || selectArtworkImage(entry, metadata, [
-            { kind: "poster", value: commonsImageUrl(posterName) },
-            { kind: "logo", value: commonsImageUrl(logoName) },
-            { kind: "image", value: commonsImageUrl(imageName) }
-          ]),
+      title: resolvedTitle,
+      description: resolvedDescription,
+      image: retainedImage || selectArtworkImage(entry, artworkMetadata, candidates),
       article: metadata.article || article,
       wikidata:
         metadata.wikidata ||
