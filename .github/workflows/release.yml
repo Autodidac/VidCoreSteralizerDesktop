@@ -35,6 +35,11 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Source updater failed: $($script.Name)" }
           }
 
+          $workflowChanges = git status --porcelain -- '.github/workflows'
+          if ($workflowChanges) {
+            throw 'Staged source updaters must not modify GitHub workflow files.'
+          }
+
           if ($scripts.Count -gt 0) {
             Remove-Item '.github/scripts/apply-v*.py' -Force -ErrorAction SilentlyContinue
             Remove-Item '.github/scripts/__pycache__' -Recurse -Force -ErrorAction SilentlyContinue
@@ -151,7 +156,7 @@ jobs:
 
           The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A real antivirus detection is treated separately as a release blocker and should not be bypassed.
 
-          Shared product state remains synchronized across Native and Web: VidCore, YTHD, and VidUp provider routing; compact resolve card above provider controls; custom-list deletion that preserves titles in Favorites; 114 provider-aware built-in entries across 25 lists; and zero fabricated built-in history.
+          Shared product state remains synchronized across Native and Web: VidCore, YTHD, and VidUp provider routing; compact resolve card above provider controls; custom-list creation inside Edit/Save; durable empty lists; save-to-destination navigation; 119 provider-aware built-in entries across 25 lists; and zero fabricated built-in history.
 
           GitHub automatically supplies `Source code (zip)` and `Source code (tar.gz)` for this tag. No redundant custom source archive is attached.
 
