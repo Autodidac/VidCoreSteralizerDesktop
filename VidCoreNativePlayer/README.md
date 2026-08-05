@@ -21,8 +21,8 @@ This repository contains the complete desktop player at its root.
 - Movie IDs use numeric TMDB or IMDb identifiers; YouTube accepts an 11-character ID or common video URL.
 - TV IDs include season and episode.
 - Play, Pause, Stop, Mute, provider-supported volume, Theater, Fullscreen, Copy URL, UI zoom, and DevTools are available.
-- Previous and Next move through the selected and filtered Library list and wrap at each end.
-- Shift+[ and Shift+] retain metadata-first numeric-ID scanning.
+- Previous and Next retain metadata-first scanning, matching the pre-v0.2.16 behavior.
+- A separate Prev in list / Next in list pair in the lower transport section moves through the selected and filtered Library list with wraparound.
 - Random numeric and public-database discovery remain available.
 - Starting list navigation or another random request cancels an active scan.
 
@@ -30,6 +30,9 @@ This repository contains the complete desktop player at its root.
 
 - Wikidata title, description, year, cover image, IMDb ID, TMDB ID, and genres
 - YouTube oEmbed title, author, and exact video thumbnail metadata
+- Official YouTube playback through the local https://player.vidcore.test WebView2 virtual host so embed requests carry client identity instead of a top-level file:// identity
+- Dedicated YouTube saved lists, search, random and locally related discovery, live Free with ads storefront access, and local channel subscriptions
+- Optional official YouTube Data API channel/upload checks; the key stays in local browser storage and is excluded from JSON backup
 - English Wikipedia fallback for missing names, descriptions, and artwork
 - Related movie or TV suggestions based on resolved genres
 - Official IMDb, TMDB, and Wikipedia links opened through the native host
@@ -74,7 +77,7 @@ This blocks popup windows and page hijacks. It does not guarantee removal of eve
 
 ## YouTube filtering security status
 
-The v0.2.17 security rollback does not enable or load WebView2 browser extensions. Native extension loading and Windows process/audio-session enumeration were removed after Microsoft Defender detected `Trojan:Win32/Wacatac.B!ml` in the v0.2.16 download. Do not restore, allowlist, or bypass the blocked binary.
+The current security baseline, introduced in v0.2.17, does not enable or load WebView2 browser extensions. Native extension loading and Windows process/audio-session enumeration were removed after Microsoft Defender detected `Trojan:Win32/Wacatac.B!ml` in the v0.2.16 download. Do not restore, allowlist, or bypass the blocked binary.
 
 The popup shield still blocks WebView2 new-window requests and navigation hijacks. The volume slider still sends provider-supported player commands, but it no longer enumerates Windows audio sessions.
 
@@ -119,14 +122,14 @@ This checks every JavaScript file and runs static feature/shield smoke tests. Wh
 
 ## Keyboard shortcuts
 
-- [ — previous item in the active Library list
-- ] — next item in the active Library list
-- Shift+[ — previous resolved numeric ID
-- Shift+] — next resolved numeric ID
+- [ — scan backward to the nearest public metadata match
+- ] — scan forward to the nearest public metadata match
 - R — random discovery
 - T — theater mode
 - M — mute
 - Esc — leave theater or fullscreen
+
+Use the lower Prev in list / Next in list buttons for active-list navigation.
 
 Use the player only with sources and media you are authorized to access.
 

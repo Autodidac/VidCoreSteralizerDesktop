@@ -4,6 +4,7 @@
   const SETTINGS_PREFIX = "vidcoreNative.settings.";
   const RESERVED_LISTS = new Set([
     "all",
+    "youtube",
     "favorites",
     "continue",
     "recommended",
@@ -21,8 +22,10 @@
     seasonField: $("#seasonField"),
     episodeField: $("#episodeField"),
     previousButton: $("#previousButton"),
+    listPreviousButton: $("#listPreviousButton"),
     playButton: $("#playButton"),
     nextButton: $("#nextButton"),
+    listNextButton: $("#listNextButton"),
     randomMode: $("#randomMode"),
     randomButton: $("#randomButton"),
     resolveButton: $("#resolveButton"),
@@ -68,6 +71,7 @@
     favoritesPanel: $("#favoritesPanel"),
     continuePanel: $("#continuePanel"),
     recommendedPanel: $("#recommendedPanel"),
+    youtubePanel: $("#youtubePanel"),
     relatedPanel: $("#relatedPanel"),
     blockedPanel: $("#blockedPanel"),
     librarySearch: $("#librarySearch"),
@@ -773,6 +777,7 @@
       favorites: elements.favoritesPanel,
       continue: elements.continuePanel,
       recommended: elements.recommendedPanel,
+      youtube: elements.youtubePanel,
       related: elements.relatedPanel,
       blocked: elements.blockedPanel
     };
@@ -1509,7 +1514,7 @@
     if (RESERVED_LISTS.has(trimmed.toLocaleLowerCase())) {
       setStatus(
         "Reserved list name",
-        "Choose a name other than All, Favorites, Continue, Recommended, Related, or Blocked.",
+        "Choose a name other than All, Favorites, Continue, Recommended, YouTube, Related, or Blocked.",
         "warn"
       );
       return "";
@@ -2214,12 +2219,28 @@
     });
 
     elements.previousButton.addEventListener("click", () => {
+      if (state.scanner.scanning) {
+        state.scanner.cancel();
+      } else {
+        state.scanner.scanNeighbor(-1);
+      }
+    });
+
+    elements.nextButton.addEventListener("click", () => {
+      if (state.scanner.scanning) {
+        state.scanner.cancel();
+      } else {
+        state.scanner.scanNeighbor(1);
+      }
+    });
+
+    elements.listPreviousButton.addEventListener("click", () => {
       playListNeighbor(-1).catch(error =>
         setStatus("List navigation failed", error.message, "error")
       );
     });
 
-    elements.nextButton.addEventListener("click", () => {
+    elements.listNextButton.addEventListener("click", () => {
       playListNeighbor(1).catch(error =>
         setStatus("List navigation failed", error.message, "error")
       );
@@ -2430,11 +2451,9 @@
       }
 
       if (event.key === "[") {
-        if (event.shiftKey) state.scanner.scanNeighbor(-1);
-        else playListNeighbor(-1).catch(() => {});
+        state.scanner.scanNeighbor(-1);
       } else if (event.key === "]") {
-        if (event.shiftKey) state.scanner.scanNeighbor(1);
-        else playListNeighbor(1).catch(() => {});
+        state.scanner.scanNeighbor(1);
       } else if (event.key.toLowerCase() === "r") {
         state.scanner.random(elements.randomMode.value);
       } else if (event.key.toLowerCase() === "t") {

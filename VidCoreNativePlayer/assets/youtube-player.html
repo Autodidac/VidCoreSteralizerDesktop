@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.youtube.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src https://www.youtube.com https://*.googlevideo.com; img-src 'self' data: https://i.ytimg.com https://*.googleusercontent.com; style-src 'unsafe-inline'">
+  <title>YouTube player</title>
+  <style>
+    html, body, #player { width: 100%; height: 100%; margin: 0; background: #020712; }
+    body { overflow: hidden; font: 15px/1.45 system-ui, sans-serif; color: #eef7ff; }
+    #fallback {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: 12px;
+      padding: 28px;
+      text-align: center;
+      background: radial-gradient(circle at top, #123866, #020712 62%);
+    }
+    #fallback[hidden] { display: none; }
+    button {
+      justify-self: center;
+      padding: 10px 16px;
+      border-radius: 6px;
+      color: white;
+      background: #156fcb;
+      border: 0;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="player"></div>
+  <div id="fallback">
+    <strong id="message">Loading the official YouTube player...</strong>
+    <button id="watchLink" type="button">Watch on YouTube</button>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+      const parameters = new URLSearchParams(location.search);
+      const videoId = String(parameters.get("video") || "").trim();
+      const autoplay = parameters.get("autoplay") === "1";
+      const fallback = document.querySelector("#fallback");
+      const message = document.querySelector("#message");
+      const watchLink = document.querySelector("#watchLink");
+      let player = null;
+
+      const watchUrl = videoId
+        ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+        : "https://www.youtube.com";
+      watchLink.addEventListener("click", () => {
+        if (globalThis.chrome?.webview) {
+          globalThis.chrome.webview.postMessage(`open-external|${watchUrl}`);
+        } else {
+          globalThis.open(watchUrl, "_blank", "noopener,noreferrer");
+        }
+      });
+
+      function showFallback(text) {
+        message.textContent = text;
+        fallback.hidden = false;
+      }
+
+      function hideFallback() {
+        fallback.hidden = true;
+      }
+
+      if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) {
+        showFallback("This YouTube video ID is invalid.");
+        return;
+      }
+
+      globalThis.onYouTubeIframeAPIReady = () => {
+        player = new YT.Player("player", {
+          width: "100%",
+          height: "100%",
+          videoId,
+          playerVars: {
+            autoplay: autoplay ? 1 : 0,
+            controls: 1,
+            enablejsapi: 1,
+            playsinline: 1,
+            origin: location.origin
+          },
+          events: {
+            onReady: hideFallback,
+            onError(event) {
+              showFallback(
+                event.data === 153
+                  ? "YouTube could not identify this embed client. Open the video on YouTube."
+                  : `YouTube playback error ${event.data}. Open the video on YouTube.`
+              );
+            }
+          }
+        });
+      };
+
+      addEventListener("message", event => {
+        if (event.source !== parent || !event.data ||
+            event.data.type !== "VIDCORE_YOUTUBE_COMMAND" || !player) {
+          return;
+        }
+        const actions = new Set(["pauseVideo", "mute", "unMute", "setVolume"]);
+        const action = String(event.data.action || "");
+        if (!actions.has(action) || typeof player[action] !== "function") return;
+        const args = Array.isArray(event.data.args) ? event.data.args : [];
+        player[action](...args);
+      });
+
+      const api = document.createElement("script");
+      api.src = "https://www.youtube.com/iframe_api";
+      api.onerror = () => showFallback(
+        "The official YouTube player could not load. Check your connection or open YouTube."
+      );
+      document.head.append(api);
+    })();
+  </script>
+</body>
+</html>
