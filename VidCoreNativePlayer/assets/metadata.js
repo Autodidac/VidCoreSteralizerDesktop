@@ -5,6 +5,8 @@
   const WIKIDATA_API = "https://www.wikidata.org/w/api.php";
   const WIKIPEDIA_ENDPOINT = "https://en.wikipedia.org/w/api.php";
   const COMMONS_ENDPOINT = "https://commons.wikimedia.org/w/api.php";
+  const YOUTUBE_OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
+  const YOUTUBE_BASE_URL = "https://www.youtube.com";
   const WIKIPEDIA_SEARCH_LIMIT = 8;
   const RELATED_REPAIR_LIMIT = 18;
 
@@ -16,7 +18,29 @@
     return parsed.origin + parsed.pathname.replace(/\/+$/, "");
   }
 
-  function normalizeId(value) {
+  function normalizeYoutubeId(value) {
+    const input = String(value || "").trim();
+    let candidate = input;
+
+    try {
+      const url = new URL(/^https?:\/\//i.test(input) ? input : `https://${input}`);
+      const host = url.hostname.toLocaleLowerCase();
+      if (host === "youtu.be" || host.endsWith(".youtu.be")) {
+        candidate = url.pathname.split("/").filter(Boolean)[0] || "";
+      } else if (host === "youtube.com" || host.endsWith(".youtube.com")) {
+        candidate = url.searchParams.get("v") ||
+          url.pathname.match(/^\/(?:embed|shorts|live)\/([^/?#]+)/i)?.[1] ||
+          "";
+      }
+    } catch {
+    }
+
+    if (/^[A-Za-z0-9_-]{11}$/.test(candidate)) return candidate;
+    throw new Error("Use an 11-character YouTube video ID or a YouTube video URL.");
+  }
+
+  function normalizeId(value, mode = "movie") {
+    if (mode === "youtube") return normalizeYoutubeId(value);
     const input = String(value || "").trim();
     const imdb = input.match(/tt\d{7,10}/i);
     if (imdb) {
@@ -39,10 +63,17 @@
   }
 
   function normalizeEntry(entry) {
+    const mode = entry.mode === "youtube"
+      ? "youtube"
+      : entry.mode === "tv"
+        ? "tv"
+        : "movie";
     const normalized = {
-      baseUrl: normalizeBaseUrl(entry.baseUrl),
-      mode: entry.mode === "tv" ? "tv" : "movie",
-      id: normalizeId(entry.id)
+      baseUrl: mode === "youtube"
+        ? YOUTUBE_BASE_URL
+        : normalizeBaseUrl(entry.baseUrl),
+      mode,
+      id: normalizeId(entry.id, mode)
     };
 
     if (normalized.mode === "tv") {
@@ -54,12 +85,16 @@
   }
 
   function entryKey(entry) {
+    if (entry.mode === "youtube") {
+      return `${entry.baseUrl}|youtube|${entry.id}`;
+    }
     return entry.mode === "movie"
       ? `${entry.baseUrl}|movie|${entry.id}`
       : `${entry.baseUrl}|tv|${entry.id}|${entry.season}|${entry.episode}`;
   }
 
   function fallbackTitle(entry) {
+    if (entry.mode === "youtube") return `YouTube ${entry.id}`;
     return entry.mode === "movie"
       ? `Movie ${entry.id}`
       : `TV ${entry.id} · S${entry.season} E${entry.episode}`;
@@ -67,6 +102,16 @@
 
   function buildPlayerUrl(entry, autoplay = true) {
     const normalized = normalizeEntry(entry);
+    if (normalized.mode === "youtube") {
+      const url = new URL(
+        `/embed/${encodeURIComponent(normalized.id)}`,
+        YOUTUBE_BASE_URL
+      );
+      url.searchParams.set("autoplay", autoplay ? "1" : "0");
+      url.searchParams.set("enablejsapi", "1");
+      url.searchParams.set("playsinline", "1");
+      return url.href;
+    }
     const path = normalized.mode === "movie"
       ? `/movie/${encodeURIComponent(normalized.id)}`
       : `/tv/${encodeURIComponent(normalized.id)}/${normalized.season}/${normalized.episode}`;
@@ -125,6 +170,34 @@
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  async function resolveYoutube(entry) {
+    const watchUrl =
+      `https://www.youtube.com/watch?v=${encodeURIComponent(entry.id)}`;
+    const url = new URL(YOUTUBE_OEMBED_ENDPOINT);
+    url.searchParams.set("url", watchUrl);
+    url.searchParams.set("format", "json");
+    const payload = await fetchJson(url);
+    return {
+      title: String(payload?.title || "").trim() || fallbackTitle(entry),
+      description: payload?.author_name
+        ? `YouTube video by ${payload.author_name}`
+        : "YouTube video",
+      year: "",
+      image: String(payload?.thumbnail_url || "").replace(/^http:/, "https:"),
+      imdb: "",
+      tmdb: "",
+      youtube: entry.id,
+      author: String(payload?.author_name || ""),
+      genres: [],
+      genreUris: [],
+      wikidata: "",
+      article: watchUrl,
+      wikipedia: "",
+      resolutionStatus: "resolved",
+      resolvedAt: new Date().toISOString()
+    };
   }
 
   async function runSparql(query) {
@@ -407,6 +480,17 @@
 
   function isLikelyBadArtwork(entry, metadata, image, sourceKind = "image") {
     if (!image) return false;
+    if (entry?.mode === "youtube") {
+      try {
+        const url = new URL(String(image));
+        const host = url.hostname.toLocaleLowerCase();
+        const expected = String(entry.id || metadata?.youtube || "");
+        return !(host === "i.ytimg.com" || host.endsWith(".ytimg.com")) ||
+          !url.pathname.split("/").includes(expected);
+      } catch {
+        return true;
+      }
+    }
     try {
       if (new URL(String(image)).protocol === "file:") return false;
     } catch {
@@ -484,6 +568,9 @@
   }
 
   function externalCatalogUrls(entry, metadata) {
+    if (entry.mode === "youtube") {
+      return { fastflix: "", seeflix: "", movies123: "" };
+    }
     const title = metadata?.title || entry?.title || "";
     if (!title || isGenericTitle(entry, title)) {
       return { fastflix: "", seeflix: "", movies123: "" };
@@ -740,6 +827,9 @@
 
   async function resolve(entry) {
     const normalized = normalizeEntry(entry);
+    if (normalized.mode === "youtube") {
+      return resolveYoutube(normalized);
+    }
     const data = await runSparql(metadataQuery(normalized));
     const metadata = metadataFromBinding(
       normalized,
@@ -820,6 +910,7 @@
   }
 
   async function related(entry, metadata) {
+    if (entry.mode === "youtube") return [];
     const query = relatedQuery(entry, metadata);
     if (!query) return [];
 
@@ -891,14 +982,21 @@
   }
 
   function tmdbUrl(entry, metadata) {
-    if (!metadata?.tmdb) return "";
+    if (entry.mode === "youtube" || !metadata?.tmdb) return "";
     const type = entry.mode === "movie" ? "movie" : "tv";
     return `https://www.themoviedb.org/${type}/${encodeURIComponent(metadata.tmdb)}`;
+  }
+
+  function youtubeUrl(entry) {
+    return entry?.mode === "youtube" && entry?.id
+      ? `https://www.youtube.com/watch?v=${encodeURIComponent(entry.id)}`
+      : "";
   }
 
   globalThis.VidCoreMetadata = Object.freeze({
     normalizeBaseUrl,
     normalizeId,
+    normalizeYoutubeId,
     normalizeEntry,
     entryKey,
     fallbackTitle,
@@ -912,6 +1010,7 @@
     relatedQuery,
     imdbUrl,
     tmdbUrl,
+    youtubeUrl,
     bindingValue,
     wikipediaSearchQueries,
     scoreWikipediaCandidate,

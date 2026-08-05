@@ -9,7 +9,8 @@
   const providers = Object.freeze([
     Object.freeze({ id: "vidcore", label: "VidCore", baseUrl: "https://vidcore.net" }),
     Object.freeze({ id: "ythd", label: "YTHD", baseUrl: "https://ythd.org/embed" }),
-    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" })
+    Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" }),
+    Object.freeze({ id: "youtube", label: "YouTube", baseUrl: "https://www.youtube.com" })
   ]);
 
   function providerFor(value) {
@@ -22,6 +23,20 @@
     const provider = providerFor(normalized.baseUrl);
     let path;
     let url;
+
+    if (normalized.mode === "youtube" || provider.id === "youtube") {
+      url = new URL(
+        `/embed/${encodeURIComponent(normalized.id)}`,
+        "https://www.youtube.com"
+      );
+      url.searchParams.set("autoplay", autoplay ? "1" : "0");
+      url.searchParams.set("enablejsapi", "1");
+      url.searchParams.set("playsinline", "1");
+      if (/^https?:$/.test(location.protocol)) {
+        url.searchParams.set("origin", location.origin);
+      }
+      return url.href;
+    }
 
     if (provider.id === "ythd") {
       path = normalized.mode === "movie"
@@ -43,11 +58,32 @@
 
   globalThis.VidCoreMetadata = Object.freeze({ ...metadata, buildPlayerUrl });
 
-  function requestPause() {
-    document.querySelector("#player")?.contentWindow?.postMessage(
-      { type: "VIDCORE_PLAYER_COMMAND", action: "pause" },
+  function playerFrame() {
+    return document.querySelector("#player");
+  }
+
+  function youtubeCommand(action, args = []) {
+    if (document.querySelector("#mode")?.value !== "youtube") return false;
+    playerFrame()?.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func: action, args }),
+      "https://www.youtube.com"
+    );
+    return true;
+  }
+
+  function providerCommand(action, value = undefined) {
+    playerFrame()?.contentWindow?.postMessage(
+      {
+        type: "VIDCORE_PLAYER_COMMAND",
+        action,
+        ...(value === undefined ? {} : { value })
+      },
       "*"
     );
+  }
+
+  function requestPause() {
+    if (!youtubeCommand("pauseVideo")) providerCommand("pause");
 
     const title = document.querySelector("#statusTitle");
     const text = document.querySelector("#statusText");
@@ -59,6 +95,19 @@
         : "Pause was sent to the provider; browser-only support depends on that provider.";
     }
     if (panel) panel.dataset.type = "ok";
+  }
+
+  function requestMute(muted) {
+    if (!youtubeCommand(muted ? "mute" : "unMute")) {
+      providerCommand("mute", Boolean(muted));
+    }
+  }
+
+  function requestVolume(value) {
+    const volume = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    if (!youtubeCommand("setVolume", [volume])) {
+      providerCommand("volume", volume);
+    }
   }
 
   function wirePauseButton() {
@@ -75,6 +124,8 @@
     providers,
     providerFor,
     buildPlayerUrl,
-    requestPause
+    requestPause,
+    requestMute,
+    requestVolume
   });
 })();

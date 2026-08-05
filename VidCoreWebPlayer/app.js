@@ -36,6 +36,8 @@
     imdbButton: $("#imdbButton"),
     tmdbButton: $("#tmdbButton"),
     wikipediaButton: $("#wikipediaButton"),
+    youtubeButton: $("#youtubeButton"),
+    seriesNextButton: $("#seriesNextButton"),
     fastflixButton: $("#fastflixButton"),
     seeflixButton: $("#seeflixButton"),
     movies123Button: $("#movies123Button"),
@@ -45,6 +47,8 @@
     stopButton: $("#stopButton"),
     copyUrlButton: $("#copyUrlButton"),
     muteButton: $("#muteButton"),
+    volumeSlider: $("#volumeSlider"),
+    volumeOutput: $("#volumeOutput"),
     theaterModeButton: $("#theaterModeButton"),
     fullscreenButton: $("#fullscreenButton"),
     devtoolsButton: $("#devtoolsButton"),
@@ -87,15 +91,27 @@
     saveDialog: $("#saveDialog"),
     saveForm: $("#saveForm"),
     saveDialogTitle: $("#saveDialogTitle"),
+    saveTitle: $("#saveTitle"),
     saveList: $("#saveList"),
     saveNotes: $("#saveNotes"),
     saveFavorite: $("#saveFavorite"),
     saveWatched: $("#saveWatched"),
+    saveNextEnabled: $("#saveNextEnabled"),
+    saveNextFields: $("#saveNextFields"),
+    saveNextProvider: $("#saveNextProvider"),
+    saveNextMode: $("#saveNextMode"),
+    saveNextTitle: $("#saveNextTitle"),
+    saveNextId: $("#saveNextId"),
+    saveNextSeasonField: $("#saveNextSeasonField"),
+    saveNextEpisodeField: $("#saveNextEpisodeField"),
+    saveNextSeason: $("#saveNextSeason"),
+    saveNextEpisode: $("#saveNextEpisode"),
     cancelSaveButton: $("#cancelSaveButton"),
     deleteDialogButton: $("#deleteDialogButton"),
     storageDialog: $("#storageDialog"),
     closeStorageDialogButton: $("#closeStorageDialogButton"),
     shieldDialog: $("#shieldDialog"),
+    extensionStatus: $("#extensionStatus"),
     closeShieldDialogButton: $("#closeShieldDialogButton"),
   };
 
@@ -109,6 +125,7 @@
     activePanel: "library",
     blocked: [],
     muted: false,
+    volume: 100,
     theater: false,
     editingKey: "",
     dialogEntry: null,
@@ -221,7 +238,11 @@
     } catch {
       return {
         baseUrl: elements.baseUrl.value.trim() || "https://vidcore.net",
-        mode: elements.mode.value === "tv" ? "tv" : "movie",
+        mode: elements.mode.value === "youtube"
+          ? "youtube"
+          : elements.mode.value === "tv"
+            ? "tv"
+            : "movie",
         id: elements.mediaId.value.trim() || "1",
         season: Math.max(0, Number.parseInt(elements.season.value, 10) || 1),
         episode: Math.max(1, Number.parseInt(elements.episode.value, 10) || 1)
@@ -240,7 +261,11 @@
 
   function applyEntry(entry) {
     elements.baseUrl.value = entry.baseUrl || "https://vidcore.net";
-    elements.mode.value = entry.mode === "tv" ? "tv" : "movie";
+    elements.mode.value = entry.mode === "youtube"
+      ? "youtube"
+      : entry.mode === "tv"
+        ? "tv"
+        : "movie";
     elements.mediaId.value = entry.id || "1";
     elements.season.value = entry.season ?? 1;
     elements.episode.value = entry.episode ?? 1;
@@ -294,13 +319,27 @@
     elements.randomMode.value =
       localStorage.getItem(`${SETTINGS_PREFIX}randomMode`) ||
       "database";
+    const savedVolume = Number(
+      localStorage.getItem(`${SETTINGS_PREFIX}volume`) || "100"
+    );
+    elements.volumeSlider.value = String(
+      Math.max(0, Math.min(100, Number.isFinite(savedVolume) ? savedVolume : 100))
+    );
+    state.volume = Number(elements.volumeSlider.value);
+    elements.volumeOutput.textContent = `${state.volume}%`;
     syncModeFields();
   }
 
   function syncModeFields() {
     const television = elements.mode.value === "tv";
+    const youtube = elements.mode.value === "youtube";
     elements.seasonField.classList.toggle("hidden", !television);
     elements.episodeField.classList.toggle("hidden", !television);
+    if (youtube) {
+      elements.baseUrl.value = "https://www.youtube.com";
+    } else if (elements.baseUrl.value === "https://www.youtube.com") {
+      elements.baseUrl.value = "https://vidcore.net";
+    }
   }
 
   function emptyMetadata(entry) {
@@ -311,7 +350,8 @@
       year: "",
       image: "",
       imdb: /^tt\d+$/i.test(entry.id) ? entry.id : "",
-      tmdb: /^\d+$/.test(entry.id) ? entry.id : "",
+      tmdb: entry.mode !== "youtube" && /^\d+$/.test(entry.id) ? entry.id : "",
+      youtube: entry.mode === "youtube" ? entry.id : "",
       genres: [],
       resolutionStatus: "unresolved"
     };
@@ -363,9 +403,11 @@
   }
 
   function renderCurrent(entry, metadata) {
-    elements.currentType.textContent = entry.mode === "movie"
-      ? "Movie"
-      : `TV · Season ${entry.season} · Episode ${entry.episode}`;
+    elements.currentType.textContent = entry.mode === "youtube"
+      ? "YouTube"
+      : entry.mode === "movie"
+        ? "Movie"
+        : `TV · Season ${entry.season} · Episode ${entry.episode}`;
     elements.currentTitle.textContent =
       metadata.title || VidCoreMetadata.fallbackTitle(entry);
     elements.currentDescription.textContent =
@@ -376,7 +418,7 @@
       elements.currentPoster,
       entry,
       metadata,
-      entry.mode === "movie" ? "M" : "TV",
+      entry.mode === "youtube" ? "YT" : entry.mode === "movie" ? "M" : "TV",
       () => isCurrentEntry(entry)
     );
 
@@ -385,7 +427,8 @@
       metadata.year,
       metadata.resolutionStatus === "resolved" ? "Resolved" : "Unresolved",
       metadata.imdb ? `IMDb ${metadata.imdb}` : "",
-      metadata.tmdb ? `TMDB ${metadata.tmdb}` : ""
+      metadata.tmdb ? `TMDB ${metadata.tmdb}` : "",
+      metadata.youtube ? `YouTube ${metadata.youtube}` : ""
     ].filter(Boolean);
 
     for (const value of metadataValues) {
@@ -404,15 +447,25 @@
 
     const imdbUrl = VidCoreMetadata.imdbUrl(metadata);
     const tmdbUrl = VidCoreMetadata.tmdbUrl(entry, metadata);
-    const wikipediaUrl = metadata.wikipedia || metadata.article || "";
+    const youtubeUrl = VidCoreMetadata.youtubeUrl(entry);
+    const wikipediaUrl = entry.mode === "youtube"
+      ? ""
+      : metadata.wikipedia || metadata.article || "";
+    const seriesNext = metadata?.next?.id ? metadata.next : null;
 
     elements.imdbButton.classList.toggle("hidden", !imdbUrl);
     elements.tmdbButton.classList.toggle("hidden", !tmdbUrl);
     elements.wikipediaButton.classList.toggle("hidden", !wikipediaUrl);
+    elements.youtubeButton.classList.toggle("hidden", !youtubeUrl);
+    elements.seriesNextButton.classList.toggle("hidden", !seriesNext);
 
     elements.imdbButton.dataset.url = imdbUrl;
     elements.tmdbButton.dataset.url = tmdbUrl;
     elements.wikipediaButton.dataset.url = wikipediaUrl;
+    elements.youtubeButton.dataset.url = youtubeUrl;
+    elements.seriesNextButton.title = seriesNext?.title
+      ? `Play ${seriesNext.title}`
+      : "Play the saved next video in this series";
 
     const catalogUrls = VidCoreMetadata.externalCatalogUrls(entry, metadata);
     for (const [button, url] of [
@@ -653,6 +706,9 @@
       const url = VidCoreMetadata.buildPlayerUrl(target, true);
       elements.player.src = url;
       elements.emptyPlayer.classList.add("hidden");
+      applyVolume(false);
+      setTimeout(() => applyVolume(false), 700);
+      setTimeout(() => applyVolume(false), 1800);
 
       if (prefetchedMetadata) {
         state.currentMetadata = prefetchedMetadata;
@@ -781,9 +837,11 @@
     metadata.className = "card-meta";
 
     const values = [
-      entry.mode === "movie"
-        ? "Movie"
-        : `TV · S${entry.season || 1} E${entry.episode || 1}`,
+      entry.mode === "youtube"
+        ? "YouTube"
+        : entry.mode === "movie"
+          ? "Movie"
+          : `TV · S${entry.season || 1} E${entry.episode || 1}`,
       entry.year,
       entry.list,
       entry.watched || entry.completed ? "Watched" : "",
@@ -818,6 +876,7 @@
     if (options.links) {
       const imdbUrl = VidCoreMetadata.imdbUrl(entry);
       const tmdbUrl = VidCoreMetadata.tmdbUrl(entry, entry);
+      const youtubeUrl = VidCoreMetadata.youtubeUrl(entry);
 
       if (imdbUrl) {
         actions.append(
@@ -828,6 +887,12 @@
       if (tmdbUrl) {
         actions.append(
           createButton("TMDB", () => openExternal(tmdbUrl))
+        );
+      }
+
+      if (youtubeUrl) {
+        actions.append(
+          createButton("YouTube", () => openExternal(youtubeUrl))
         );
       }
 
@@ -1176,6 +1241,80 @@
     }
   }
 
+  function syncNextFields() {
+    const enabled = elements.saveNextEnabled.checked;
+    const television = elements.saveNextMode.value === "tv";
+    const youtube = elements.saveNextMode.value === "youtube";
+    elements.saveNextFields.classList.toggle("hidden", !enabled);
+    elements.saveNextSeasonField.classList.toggle("hidden", !enabled || !television);
+    elements.saveNextEpisodeField.classList.toggle("hidden", !enabled || !television);
+    if (youtube) {
+      elements.saveNextProvider.value = "https://www.youtube.com";
+    } else if (elements.saveNextProvider.value === "https://www.youtube.com") {
+      elements.saveNextProvider.value = "https://vidcore.net";
+    }
+  }
+
+  function nextEntryFromDialog() {
+    if (!elements.saveNextEnabled.checked) return null;
+    if (!elements.saveNextId.value.trim()) {
+      throw new Error("Enter the next video's media ID or turn off next-in-series.");
+    }
+    const next = VidCoreMetadata.normalizeEntry({
+      baseUrl: elements.saveNextProvider.value,
+      mode: elements.saveNextMode.value,
+      id: elements.saveNextId.value,
+      season: elements.saveNextSeason.value,
+      episode: elements.saveNextEpisode.value
+    });
+    const title = elements.saveNextTitle.value.trim();
+    return title ? { ...next, title } : next;
+  }
+
+  async function playSeriesNext() {
+    let source = state.currentMetadata;
+    if (state.storageReady) {
+      try {
+        const saved = await VidCoreStorage.get(
+          VidCoreStorage.STORES.favorites,
+          VidCoreMetadata.entryKey(currentEntry())
+        );
+        if (saved) source = { ...(source || {}), ...saved };
+      } catch {
+      }
+    }
+
+    if (!source?.next?.id) {
+      setStatus("No series next", "Add the next video in Edit/Save first.", "warn");
+      return;
+    }
+
+    const target = VidCoreMetadata.normalizeEntry(source.next);
+    const saved = state.storageReady
+      ? await VidCoreStorage.get(
+          VidCoreStorage.STORES.favorites,
+          VidCoreMetadata.entryKey(target)
+        )
+      : null;
+    const manual = source.next.title
+      ? {
+          ...emptyMetadata(target),
+          ...source.next,
+          title: source.next.title,
+          description: `Next in series after ${source.title || "the current title"}`,
+          resolutionStatus: "manual"
+        }
+      : null;
+
+    await play(
+      target,
+      saved?.resolutionStatus === "resolved" ? saved : manual
+    );
+    if (!saved?.resolutionStatus || saved.resolutionStatus !== "resolved") {
+      resolveEntry(target, true).catch(() => {});
+    }
+  }
+
   async function openSaveDialog(entry = null) {
     if (!state.storageReady) return;
 
@@ -1198,6 +1337,10 @@
     elements.saveDialogTitle.textContent = existing
       ? "Edit library item"
       : "Save to library";
+    const sourceMetadata = existing || entry ||
+      (state.currentMetadataKey === key ? state.currentMetadata : null) || {};
+    elements.saveTitle.value =
+      sourceMetadata.title || VidCoreMetadata.fallbackTitle(target);
     const category = existing
       ? categoryForEntry(existing)
       : state.selectedList !== "All" && state.selectedList !== "Favorites"
@@ -1211,7 +1354,21 @@
     elements.deleteDialogButton.classList.toggle("hidden", !existing);
     elements.saveNotes.value = existing?.notes || "";
     elements.saveWatched.checked = Boolean(existing?.watched);
+    const next = sourceMetadata.next || null;
+    elements.saveNextEnabled.checked = Boolean(next);
+    elements.saveNextProvider.value = next?.baseUrl || target.baseUrl;
+    if (!elements.saveNextProvider.value) {
+      elements.saveNextProvider.value = "https://vidcore.net";
+    }
+    elements.saveNextMode.value = next?.mode || target.mode;
+    elements.saveNextTitle.value = next?.title || "";
+    elements.saveNextId.value = next?.id ||
+      (target.mode === "tv" ? target.id : "");
+    elements.saveNextSeason.value = next?.season ?? target.season ?? 1;
+    elements.saveNextEpisode.value = next?.episode ??
+      (target.mode === "tv" ? (target.episode ?? 1) + 1 : 1);
     elements.saveNewListName.value = "";
+    syncNextFields();
     elements.saveDialog.showModal();
   }
 
@@ -1231,6 +1388,8 @@
         : null;
     const now = new Date().toISOString();
     const destinationList = elements.saveList.value || "Uncategorized";
+    const manualTitle = elements.saveTitle.value.trim();
+    const next = nextEntryFromDialog();
 
     await VidCoreStorage.put(
       VidCoreStorage.STORES.favorites,
@@ -1240,9 +1399,11 @@
         ...(metadata || {}),
         key,
         title:
+          manualTitle ||
           metadata?.title ||
           existing?.title ||
           VidCoreMetadata.fallbackTitle(entry),
+        next,
         list: destinationList,
         favorite: elements.saveFavorite.checked,
         notes: elements.saveNotes.value.trim(),
@@ -1417,6 +1578,45 @@
     );
   }
 
+  async function playListNeighbor(direction) {
+    if (!state.storageReady) {
+      setStatus("Library not ready", "Wait for storage to finish starting.", "warn");
+      return;
+    }
+    if (state.scanner?.scanning) state.scanner.cancel();
+
+    const entries = filterLibraryEntries(
+      await VidCoreStorage.getAll(VidCoreStorage.STORES.favorites)
+    );
+    if (entries.length === 0) {
+      setStatus("Active list is empty", "Choose a populated Library list.", "warn");
+      return;
+    }
+
+    let currentKey = "";
+    try {
+      currentKey = VidCoreMetadata.entryKey(currentEntry());
+    } catch {
+    }
+    const currentIndex = entries.findIndex(entry =>
+      (entry.key || VidCoreMetadata.entryKey(entry)) === currentKey
+    );
+    const targetIndex = currentIndex < 0
+      ? direction > 0 ? 0 : entries.length - 1
+      : (currentIndex + direction + entries.length) % entries.length;
+    const target = entries[targetIndex];
+
+    await play(
+      target,
+      target.resolutionStatus === "resolved" ? target : null
+    );
+    setStatus(
+      direction > 0 ? "Next in active list" : "Previous in active list",
+      `${target.title || VidCoreMetadata.fallbackTitle(target)} · ${state.selectedList}`,
+      "ok"
+    );
+  }
+
   async function selectedFavorites() {
     const entries = await VidCoreStorage.getAll(
       VidCoreStorage.STORES.favorites
@@ -1536,7 +1736,8 @@
           mediaId: elements.mediaId.value,
           season: elements.season.value,
           episode: elements.episode.value,
-          randomMode: elements.randomMode.value
+          randomMode: elements.randomMode.value,
+          volume: Number(elements.volumeSlider.value)
         }
       });
 
@@ -1583,7 +1784,11 @@
           payload.settings.episode || elements.episode.value;
         elements.randomMode.value =
           payload.settings.randomMode || "database";
+        if (payload.settings.volume !== undefined) {
+          elements.volumeSlider.value = String(payload.settings.volume);
+        }
         syncModeFields();
+        applyVolume(false);
       }
 
       await renderAllLibraryViews();
@@ -1603,10 +1808,7 @@
   }
 
   function setScanning(scanning) {
-    const text = scanning ? "Stop scan" : null;
-    elements.previousButton.textContent = text || "Previous";
-    elements.nextButton.textContent = text || "Next";
-    elements.randomButton.textContent = text || "Random";
+    elements.randomButton.textContent = scanning ? "Stop scan" : "Random";
   }
 
   function toggleTheater() {
@@ -1632,6 +1834,39 @@
     const percent = Number(elements.zoomSlider.value);
     elements.zoomOutput.textContent = `${percent}%`;
     postHost(`zoom|${(percent / 100).toFixed(2)}`);
+  }
+
+  function applyVolume(announce = false) {
+    const percent = Math.max(
+      0,
+      Math.min(100, Number(elements.volumeSlider.value) || 0)
+    );
+    state.volume = percent;
+    elements.volumeSlider.value = String(percent);
+    elements.volumeOutput.textContent = `${percent}%`;
+    localStorage.setItem(`${SETTINGS_PREFIX}volume`, String(percent));
+    VidCoreProviders.requestVolume(percent);
+    postHost(`volume|${(percent / 100).toFixed(2)}`);
+    if (announce) {
+      setStatus(
+        "Volume requested",
+        globalThis.chrome?.webview
+          ? `Native WebView audio set to ${percent}%.`
+          : `Provider volume set to ${percent}% when supported.`,
+        "ok"
+      );
+    }
+  }
+
+  function requestMute() {
+    const muted = !state.muted;
+    VidCoreProviders.requestMute(muted);
+    if (globalThis.chrome?.webview) {
+      postHost(`mute|${muted ? 1 : 0}`);
+    } else {
+      state.muted = muted;
+      elements.muteButton.textContent = muted ? "Unmute" : "Mute";
+    }
   }
 
   function changeZoom(delta) {
@@ -1708,12 +1943,35 @@
       return;
     }
 
+    if (command === "volume") {
+      const percent = Math.round((Number(payload) || 0) * 100);
+      state.volume = Math.max(0, Math.min(100, percent));
+      elements.volumeSlider.value = String(state.volume);
+      elements.volumeOutput.textContent = `${state.volume}%`;
+      return;
+    }
+
     if (command === "zoom") {
       const percent = Math.round(
         (Number(payload) || 1) * 100
       );
       elements.zoomSlider.value = String(percent);
       elements.zoomOutput.textContent = `${percent}%`;
+      return;
+    }
+
+    if (command === "extension") {
+      const separator = payload.indexOf("|");
+      const status = separator < 0 ? payload : payload.slice(0, separator);
+      const detail = separator < 0 ? "" : payload.slice(separator + 1);
+      const messages = {
+        active: detail ? `${detail} is active.` : "The browser extension is active.",
+        missing: "No unpacked extension found at data/extensions/ublock/manifest.json.",
+        unsupported: "This WebView2 Runtime does not support browser extensions.",
+        error: "The unpacked browser extension could not be loaded."
+      };
+      elements.extensionStatus.textContent =
+        messages[status] || "Browser extension status is unknown.";
       return;
     }
 
@@ -1948,6 +2206,14 @@
       syncModeFields();
       resetCurrentMetadataIfChanged();
     });
+    elements.baseUrl.addEventListener("change", () => {
+      if (elements.baseUrl.value === "https://www.youtube.com") {
+        elements.mode.value = "youtube";
+      } else if (elements.mode.value === "youtube") {
+        elements.mode.value = "movie";
+      }
+      syncModeFields();
+    });
 
     for (const input of [
       elements.baseUrl,
@@ -1975,19 +2241,15 @@
     });
 
     elements.previousButton.addEventListener("click", () => {
-      if (state.scanner.scanning) {
-        state.scanner.cancel();
-      } else {
-        state.scanner.scanNeighbor(-1);
-      }
+      playListNeighbor(-1).catch(error =>
+        setStatus("List navigation failed", error.message, "error")
+      );
     });
 
     elements.nextButton.addEventListener("click", () => {
-      if (state.scanner.scanning) {
-        state.scanner.cancel();
-      } else {
-        state.scanner.scanNeighbor(1);
-      }
+      playListNeighbor(1).catch(error =>
+        setStatus("List navigation failed", error.message, "error")
+      );
     });
 
     elements.randomButton.addEventListener("click", () => {
@@ -2019,6 +2281,16 @@
       "click",
       () => openExternal(elements.wikipediaButton.dataset.url)
     );
+    elements.youtubeButton.addEventListener(
+      "click",
+      () => openExternal(elements.youtubeButton.dataset.url)
+    );
+    elements.seriesNextButton.addEventListener(
+      "click",
+      () => playSeriesNext().catch(error =>
+        setStatus("Series navigation failed", error.message, "error")
+      )
+    );
     for (const button of [
       elements.fastflixButton,
       elements.seeflixButton,
@@ -2029,10 +2301,9 @@
 
     elements.stopButton.addEventListener("click", stopPlayer);
     elements.copyUrlButton.addEventListener("click", copyPlayerUrl);
-    elements.muteButton.addEventListener(
-      "click",
-      () => postHost(`mute|${state.muted ? 0 : 1}`)
-    );
+    elements.muteButton.addEventListener("click", requestMute);
+    elements.volumeSlider.addEventListener("input", () => applyVolume(false));
+    elements.volumeSlider.addEventListener("change", () => applyVolume(true));
     elements.theaterModeButton.addEventListener(
       "click",
       toggleTheater
@@ -2091,6 +2362,16 @@
       "input",
       renderLibrary
     );
+    elements.saveNextEnabled.addEventListener("change", syncNextFields);
+    elements.saveNextMode.addEventListener("change", syncNextFields);
+    elements.saveNextProvider.addEventListener("change", () => {
+      if (elements.saveNextProvider.value === "https://www.youtube.com") {
+        elements.saveNextMode.value = "youtube";
+      } else if (elements.saveNextMode.value === "youtube") {
+        elements.saveNextMode.value = "movie";
+      }
+      syncNextFields();
+    });
     elements.saveAddListButton.addEventListener("click", () => {
       addListFromDialog().catch(error =>
         setStatus("List creation failed", error.message, "error")
@@ -2176,15 +2457,17 @@
       }
 
       if (event.key === "[") {
-        state.scanner.scanNeighbor(-1);
+        if (event.shiftKey) state.scanner.scanNeighbor(-1);
+        else playListNeighbor(-1).catch(() => {});
       } else if (event.key === "]") {
-        state.scanner.scanNeighbor(1);
+        if (event.shiftKey) state.scanner.scanNeighbor(1);
+        else playListNeighbor(1).catch(() => {});
       } else if (event.key.toLowerCase() === "r") {
         state.scanner.random(elements.randomMode.value);
       } else if (event.key.toLowerCase() === "t") {
         toggleTheater();
       } else if (event.key.toLowerCase() === "m") {
-        postHost(`mute|${state.muted ? 0 : 1}`);
+        requestMute();
       } else if (event.key === "Escape" && state.theater) {
         toggleTheater();
       }
@@ -2212,6 +2495,7 @@
     renderRecommended();
     bindEvents();
     postHost("ready");
+    applyVolume(false);
     await initializeStorage();
   }
 

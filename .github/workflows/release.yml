@@ -156,7 +156,7 @@ jobs:
 
           The binary is not Authenticode-signed, so Windows SmartScreen may still show an unknown-publisher reputation warning. A real antivirus detection is treated separately as a release blocker and should not be bypassed.
 
-          Shared product state remains synchronized across Native and Web: VidCore, YTHD, and VidUp provider routing; compact resolve card above provider controls; custom-list creation inside Edit/Save; durable empty lists; save-to-destination navigation; 119 provider-aware built-in entries across 25 lists; and zero fabricated built-in history.
+          Shared product state remains synchronized across Native and Web: VidCore, YTHD, VidUp, and YouTube routing; compact resolve card above provider controls; active-list navigation; external volume; next-in-series metadata; custom-list creation inside Edit/Save; the current provider-aware built-in default union; and zero fabricated built-in history. The native package supports a user-supplied unpacked browser extension but does not bundle or download one.
 
           GitHub automatically supplies `Source code (zip)` and `Source code (tar.gz)` for this tag. No redundant custom source archive is attached.
 

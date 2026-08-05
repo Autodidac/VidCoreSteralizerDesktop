@@ -53,6 +53,8 @@
             <button id="imdbButton" class="button hidden">IMDb</button>
             <button id="tmdbButton" class="button hidden">TMDB</button>
             <button id="wikipediaButton" class="button hidden">Wikipedia</button>
+            <button id="youtubeButton" class="button hidden">YouTube</button>
+            <button id="seriesNextButton" class="button hidden">Series next</button>
             <button id="fastflixButton" class="button hidden">FastFlix</button>
             <button id="seeflixButton" class="button hidden">SeeFlix</button>
             <button id="movies123Button" class="button hidden">123Movies</button>
@@ -66,6 +68,7 @@
               <option value="https://vidcore.net" selected>VidCore</option>
               <option value="https://ythd.org/embed">YTHD</option>
               <option value="https://vidup.to">VidUp</option>
+              <option value="https://www.youtube.com">YouTube</option>
             </select>
           </label>
 
@@ -74,11 +77,12 @@
             <select id="mode">
               <option value="movie">Movie</option>
               <option value="tv">TV</option>
+              <option value="youtube">YouTube</option>
             </select>
           </label>
 
           <label class="field id-field">
-            <span>IMDb / TMDB ID</span>
+            <span>Media ID / YouTube URL</span>
             <input
                 id="mediaId"
                 value="1"
@@ -99,8 +103,8 @@
           <button
               id="previousButton"
               class="button"
-              title="Scan backward to the nearest public metadata match">
-            Previous
+              title="Play the previous title in the active Library list">
+            Prev in list
           </button>
 
           <button id="playButton" class="button primary">Play</button>
@@ -110,8 +114,8 @@
           <button
               id="nextButton"
               class="button"
-              title="Scan forward to the nearest public metadata match">
-            Next
+              title="Play the next title in the active Library list">
+            Next in list
           </button>
 
           <select id="randomMode" class="random-mode" aria-label="Random mode">
@@ -146,6 +150,18 @@
             <button id="theaterModeButton" class="button">Theater</button>
             <button id="fullscreenButton" class="button">Fullscreen</button>
             <button id="devtoolsButton" class="button">DevTools</button>
+          </div>
+
+          <div class="volume-row">
+            <span>Volume</span>
+            <input
+                id="volumeSlider"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value="100">
+            <output id="volumeOutput">100%</output>
           </div>
 
           <div class="zoom-row">
@@ -257,6 +273,11 @@
       <h3 id="saveDialogTitle">Save to library</h3>
 
       <label class="field">
+        <span>Title</span>
+        <input id="saveTitle" maxlength="180" placeholder="Display title">
+      </label>
+
+      <label class="field">
         <span>List</span>
         <select id="saveList"></select>
       </label>
@@ -289,6 +310,55 @@
         <span>Mark watched</span>
       </label>
 
+      <fieldset class="dialog-section">
+        <legend>Next video in series</legend>
+        <label class="check-row">
+          <input id="saveNextEnabled" type="checkbox">
+          <span>Attach a specific next movie, episode, or YouTube video</span>
+        </label>
+
+        <div id="saveNextFields" class="dialog-grid hidden">
+          <label class="field">
+            <span>Provider</span>
+            <select id="saveNextProvider">
+              <option value="https://vidcore.net">VidCore</option>
+              <option value="https://ythd.org/embed">YTHD</option>
+              <option value="https://vidup.to">VidUp</option>
+              <option value="https://www.youtube.com">YouTube</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Type</span>
+            <select id="saveNextMode">
+              <option value="movie">Movie</option>
+              <option value="tv">TV</option>
+              <option value="youtube">YouTube</option>
+            </select>
+          </label>
+
+          <label class="field wide-field">
+            <span>Next title</span>
+            <input id="saveNextTitle" maxlength="180" placeholder="Optional display title">
+          </label>
+
+          <label class="field wide-field">
+            <span>Media ID / YouTube URL</span>
+            <input id="saveNextId" spellcheck="false" autocomplete="off">
+          </label>
+
+          <label id="saveNextSeasonField" class="field">
+            <span>Season</span>
+            <input id="saveNextSeason" type="number" min="0" step="1" value="1">
+          </label>
+
+          <label id="saveNextEpisodeField" class="field">
+            <span>Episode</span>
+            <input id="saveNextEpisode" type="number" min="1" step="1" value="1">
+          </label>
+        </div>
+      </fieldset>
+
       <div class="dialog-actions split-actions">
         <button
             id="deleteDialogButton"
@@ -306,7 +376,7 @@
     <div class="dialog-body">
       <h3>Library storage</h3>
       <p>
-        Favorites are an overlay and no longer replace a title's category. Create lists directly inside Edit/Save; empty lists persist until you explicitly delete them, and saving switches Library to the destination list. Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. The native player creates data/artwork/category/title folders; drop several JPG, PNG, WebP, GIF, BMP, or AVIF images into a title folder and one is selected randomly for that launch. Those user-owned files are never downloaded or deleted by the player. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
+        Favorites are an overlay and no longer replace a title's category. Edit/Save can also attach the exact next video in a series. Create lists directly inside Edit/Save; empty lists persist until you explicitly delete them, and saving switches Library to the destination list. Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. The native player creates data/artwork/category/title folders; drop several JPG, PNG, WebP, GIF, BMP, or AVIF images into a title folder and one is selected randomly for that launch. Those user-owned files are never downloaded or deleted by the player. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
       </p>
       <p>
         Exact playback position is unavailable because the provider frame is cross-origin. Continue Watching records played titles and manual completion state.
@@ -320,11 +390,12 @@
   <dialog id="shieldDialog">
     <div class="dialog-body">
       <h3>Native popup shield</h3>
+      <strong id="extensionStatus">Browser-hosted mode cannot load extensions.</strong>
       <p>
         The C++ host cancels WebView2 new-window requests and top-level navigation hijacks. A document-created guard also blocks window.open, target-blank links, external click redirects, middle-click navigation, and external form submissions inside every frame.
       </p>
       <p>
-        This prevents popup tabs and window hijacks. It does not promise to remove every visual advertisement rendered inside the provider frame.
+        This prevents popup tabs and window hijacks. For maintained ad and script filtering, the native player can load a user-supplied unpacked uBlock Origin Chromium build from data/extensions/ublock/manifest.json. The app never downloads, updates, modifies, or deletes that extension. Restart after placing or changing it. Browser-hosted mode cannot filter a cross-origin YouTube frame.
       </p>
       <div class="dialog-actions">
         <button id="closeShieldDialogButton" class="button primary">Close</button>

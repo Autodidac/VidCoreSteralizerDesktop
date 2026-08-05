@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(directory, "..");
+const repositoryRoot = path.resolve(root, "..");
 const html = fs.readFileSync(path.join(root, "assets", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "assets", "app.js"), "utf8");
 const metadata = fs.readFileSync(path.join(root, "assets", "metadata.js"), "utf8");
@@ -35,7 +36,15 @@ for (const id of [
   "deleteListButton",
   "saveFavorite",
   "saveNewListName",
-  "saveAddListButton"
+  "saveAddListButton",
+  "youtubeButton",
+  "volumeSlider",
+  "volumeOutput",
+  "saveTitle",
+  "saveNextEnabled",
+  "saveNextMode",
+  "saveNextId",
+  "extensionStatus"
 ]) {
   assert.match(html, new RegExp(`id="${id}"`));
 }
@@ -86,7 +95,12 @@ assert.match(app, /VidCoreStorage\.remove\(VidCoreStorage\.STORES\.lists, name\)
 assert.match(app, /favorite: elements\.saveFavorite\.checked/);
 assert.match(app, /list: "Uncategorized"/);
 assert.doesNotMatch(app, /staleEmptyLists/);
-assert.match(app, /async function addListFromDialog/);
+assert.match(app, /async function playListNeighbor/);
+assert.match(app, /function nextEntryFromDialog/);
+assert.match(app, /async function playSeriesNext/);
+assert.match(app, /VidCoreProviders.requestVolume/);
+assert.ok(app.includes("postHost(") && app.includes("volume|"));
+assert.match(app, /command === "extension"/);assert.match(app, /async function addListFromDialog/);
 assert.match(app, /state\.selectedList = destinationList/);
 assert.match(app, /showPanel\("library"\)/);
 for (const title of [
@@ -119,8 +133,30 @@ assert.match(webview, /executable_directory/);
 assert.match(webview, /local-artwork/);
 assert.match(webview, /artwork_root/);
 assert.match(webview, /README\.txt/);
+assert.match(webview, /AreBrowserExtensionsEnabled/);
+assert.match(webview, /AddBrowserExtension/);
+assert.ok(webview.includes('L"extensions" / L"ublock"'));
+assert.ok(webview.includes('L"manifest.json"'));
+assert.match(webview, /IAudioSessionManager2/);
+assert.match(webview, /SetMasterVolume/);
 assert.doesNotMatch(webview, /blocked-count/);
 assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
 assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);
 
+for (const name of [
+  "app.js",
+  "builtin-additions.js",
+  "builtin-library.js",
+  "index.html",
+  "metadata.js",
+  "providers.js",
+  "storage.js",
+  "styles.css"
+]) {
+  assert.equal(
+    fs.readFileSync(path.join(root, "assets", name), "utf8"),
+    fs.readFileSync(path.join(repositoryRoot, "VidCoreWebPlayer", name), "utf8"),
+    "shared asset is out of sync: " + name
+  );
+}
 console.log("Static feature, merged defaults, popup-shield, and Defender-safe host checks passed.");

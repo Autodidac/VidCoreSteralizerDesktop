@@ -17,18 +17,19 @@ This repository contains the complete desktop player at its root.
 
 ### Playback and navigation
 
-- Configurable HTTPS provider URL
-- Movie IDs using numeric TMDB or IMDb `tt…` identifiers
-- TV IDs with season and episode
-- Play, Stop, Mute, Theater, Fullscreen, Copy URL, UI zoom, and DevTools
-- Metadata-first Previous and Next scanning
-- Random numeric discovery
-- Random public-database discovery
-- Scanner cancellation by pressing Previous, Next, or Random again
+- VidCore, YTHD, and VidUp remain first in that order; YouTube is a distinct fourth mode.
+- Movie IDs use numeric TMDB or IMDb identifiers; YouTube accepts an 11-character ID or common video URL.
+- TV IDs include season and episode.
+- Play, Pause, Stop, Mute, external volume, Theater, Fullscreen, Copy URL, UI zoom, and DevTools are available.
+- Previous and Next move through the selected and filtered Library list and wrap at each end.
+- Shift+[ and Shift+] retain metadata-first numeric-ID scanning.
+- Random numeric and public-database discovery remain available.
+- Starting list navigation or another random request cancels an active scan.
 
 ### Metadata and discovery
 
 - Wikidata title, description, year, cover image, IMDb ID, TMDB ID, and genres
+- YouTube oEmbed title, author, and exact video thumbnail metadata
 - English Wikipedia fallback for missing names, descriptions, and artwork
 - Related movie or TV suggestions based on resolved genres
 - Official IMDb, TMDB, and Wikipedia links opened through the native host
@@ -41,6 +42,7 @@ This repository contains the complete desktop player at its root.
 - IndexedDB storage with automatic localStorage fallback
 - Named lists with item counts
 - Notes
+- Optional provider-aware next-in-series link
 - Watched state
 - Library filtering
 - Continue Watching based on played titles and manual completion
@@ -65,10 +67,20 @@ The popup shield remains outside the provider page:
 5. Blocked hosts are learned into:
 
 ```text
-%LOCALAPPDATA%\VidCoreNativePlayer\blocked-hosts.txt
+data/blocked-hosts.txt
 ```
 
 This blocks popup windows and page hijacks. It does not guarantee removal of every visual advertisement rendered inside the embedded provider frame.
+
+## Optional native uBlock Origin filtering
+
+The native player can run a user-supplied unpacked Chromium extension through WebView2's supported profile API. To use uBlock Origin's own filtering engine, unpack an official Chromium release so this file exists beside the executable:
+
+    data/extensions/ublock/manifest.json
+
+Restart the player after changing the folder. Shield details reports whether WebView2 loaded it. The application never bundles, downloads, updates, modifies, or deletes the extension. Filtering results still depend on the installed extension, its lists, the WebView2 Runtime, and YouTube's current delivery behavior.
+
+The browser-hosted build cannot install an extension into its cross-origin iframe; use the blocker installed in the browser running that build.
 
 ## Requirements
 
@@ -109,12 +121,14 @@ This checks every JavaScript file and runs static feature/shield smoke tests. Wh
 
 ## Keyboard shortcuts
 
-- `[` — previous resolved numeric ID
-- `]` — next resolved numeric ID
-- `R` — random discovery
-- `T` — theater mode
-- `M` — mute
-- `Esc` — leave theater or fullscreen
+- [ — previous item in the active Library list
+- ] — next item in the active Library list
+- Shift+[ — previous resolved numeric ID
+- Shift+] — next resolved numeric ID
+- R — random discovery
+- T — theater mode
+- M — mute
+- Esc — leave theater or fullscreen
 
 Use the player only with sources and media you are authorized to access.
 
@@ -131,7 +145,7 @@ Use the player only with sources and media you are authorized to access.
 
 ## Portable data and image cache
 
-The Windows build keeps its complete WebView2 profile in `data/` beside `VidCoreNativePlayer.exe`. That folder contains browser cache, resolved remote artwork cache, IndexedDB, localStorage, popup-block history, and other runtime state. Moving the application folder moves its data with it; the player no longer creates its own application folder under Local AppData.
+The Windows build keeps its complete WebView2 profile in `data/` beside `VidCoreNativePlayer.exe`. That folder contains browser cache, IndexedDB, localStorage, popup-block history, and other runtime state. Moving the application folder moves its data with it; the player no longer creates its own application folder under Local AppData.
 
 Artwork resolution rejects diagrams, unrelated subject images, actor/director portraits, cast photos, and red-carpet images. It prefers film-poster, logo, and film-still properties tied to the exact Wikidata title, then uses strict Wikipedia and Wikimedia Commons fallbacks.
 

@@ -5,14 +5,15 @@ Two maintained VidCore players live in separate folders:
 - [`VidCoreNativePlayer/`](VidCoreNativePlayer/) — C++23 modules, Win32, and WebView2 with native popup/new-window interception.
 - [`VidCoreWebPlayer/`](VidCoreWebPlayer/) — standalone browser version with the same metadata, discovery, and library workflow.
 
-## Current corrections
+## Current development work
 
-- Database Pick is the default random mode.
-- `All` is followed permanently by `Favorites` in list controls.
-- Favorites also has its own top-level tab beside Library, Continue, Recommended, and Related.
-- Delete is available only inside the Edit window, away from Play.
-- Cover resolution uses Wikidata SPARQL, direct Wikidata entities, exact Wikipedia pages, and scored Wikipedia search fallback.
-- Related-title images receive the same bounded repair pass.
+- The supplied import.json is now the deterministic built-in source: 236 provider-aware entries across 27 lists, with zero seeded history.
+- YouTube is a distinct fourth playback mode with URL/ID normalization, official embed playback, and oEmbed metadata.
+- Previous and Next move through the selected and filtered Library list, with wraparound.
+- Edit/Save stores a manual title and an optional provider-aware next-in-series link.
+- A persistent volume slider controls provider APIs and the native WebView2 audio session.
+- The native app can load a user-supplied unpacked uBlock Origin Chromium build from data/extensions/ublock; it does not bundle or download the extension.
+- Native and Web shared assets have regression checks that fail when the copies drift.
 
 Start with the README inside the version you want to run.
 
