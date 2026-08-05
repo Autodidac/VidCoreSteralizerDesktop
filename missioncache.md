@@ -97,12 +97,15 @@
 - [x] Tighten artwork acceptance around sequel numbers, conflicting years, article media type, book/title-page imagery, historical source material, soundtrack/album art, and unrelated posters.
 - [x] Resolve an exact Wikidata entity's title before validating its artwork so valid title-matching posters are not compared against generic Movie/TV ID placeholders.
 - [x] Update scanner test artwork to carry the resolved title identity instead of relying on an unqualified poster filename that production now rejects.
+- [x] Supersede the unverified v0.2.13 Windows artifact with v0.2.14 before local endpoint verification.
+- [x] Publish `v0.2.14` with local artwork folders, Favorites overlay semantics, Related repair, and stricter artwork identity validation.
+- [x] Confirm the v0.2.14 validation, MSVC build, Microsoft Defender runner scan, packaging, and publication workflow completed successfully.
+- [x] Remove the temporary v0.2.14 dispatcher and cleanup workflows, delete the trigger branch, and close the trigger pull request without merging it.
+- [x] Confirm only `main` remains after v0.2.14 release cleanup.
 
 ## Open / provider-limited
 
-- [ ] Publish v0.2.14 with local artwork folders, Favorites overlay semantics, Related repair, and stricter artwork identity validation.
 - [ ] Verify the downloadable v0.2.14 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
-- [x] Supersede the unverified v0.2.13 Windows artifact with v0.2.14 before local endpoint verification.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.
