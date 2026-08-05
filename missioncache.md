@@ -127,11 +127,13 @@
 - [x] Treat the later user-reported Microsoft Defender detection `Trojan:Win32/Wacatac.B!ml` on v0.2.16 as a release blocker that overrides the earlier clean CI and local scans.
 - [x] Mark v0.2.16 blocked and v0.2.15 superseded/unverified on GitHub without silently replacing either artifact.
 - [x] Remove native WebView2 extension loading and Windows process/audio-session enumeration from the v0.2.17 candidate while retaining YouTube playback, provider volume messaging, active-list navigation, next-in-series metadata, and imported defaults.
+- [x] Publish v0.2.17 as a separate security rollback without replacing the blocked v0.2.16 artifact.
+- [x] Confirm the v0.2.17 validation, MSVC build, GitHub-runner Defender scan, packaging, checksums, release publication, and recorded release status completed successfully.
+- [x] Verify the downloaded v0.2.17 native ZIP checksum and package contents, then scan both the ZIP and its Internet-origin-marked executable with current local Defender signatures and find no threats.
 
 ## Open / provider-limited
 
-- [ ] Publish the separately versioned v0.2.17 security rollback and inspect its workflow, artifacts, security report, and recorded release status.
-- [ ] Verify the downloadable v0.2.17 native candidate with the affected user's current Microsoft Defender signatures before recommending it.
+- [ ] Confirm v0.2.17 does not trigger Defender during the affected user's normal browser download before broadly recommending the native ZIP; direct ZIP and Internet-origin executable scans passed, but v0.2.16's download-time result differed.
 - [ ] The resolver revision referenced in chat is not present in the repository or reachable history; integrate it only after its exact source is available and passes the Defender-safe boundary.
 - [ ] Verify real YouTube ad filtering only after a safe filtering path is restored; the v0.2.17 native candidate intentionally does not load browser extensions.
 - [ ] Reintroduce native unpacked-extension loading only after an independently verified or signed design passes the affected user's current Defender signatures.
