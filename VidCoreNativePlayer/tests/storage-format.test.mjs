@@ -40,6 +40,13 @@ await context.VidCoreStorage.put(S.favorites, {
     title: "The Sequel"
   }
 });
+await context.VidCoreStorage.put(S.youtubeChannels, {
+  key: "handle:@openai",
+  kind: "handle",
+  reference: "openai",
+  title: "OpenAI",
+  url: "https://www.youtube.com/@openai"
+});
 const backup = await context.VidCoreStorage.exportData();
 assert.equal(backup.version, 2);
 assert.deepEqual(
@@ -53,6 +60,9 @@ assert.equal(backup.providers[4].baseUrl, "https://example-provider.test/embed")
 assert.equal(backup.favorites[0].next.provider, 4);
 assert.equal("baseUrl" in backup.favorites[0].next, false);
 assert.equal(backup.favorites[0].next.title, "The Sequel");
+assert.equal(backup.youtubeChannels.length, 1);
+assert.equal(backup.youtubeChannels[0].key, "handle:@openai");
+assert.equal(JSON.stringify(backup).includes("youtubeDataApiKey"), false);
 
 await context.VidCoreStorage.clear(S.favorites);
 await context.VidCoreStorage.importData({
@@ -75,6 +85,7 @@ assert.equal(imported[0].favorite, true);
 assert.equal(imported[0].list, "Uncategorized");
 
 await context.VidCoreStorage.clear(S.favorites);
+await context.VidCoreStorage.clear(S.youtubeChannels);
 await context.VidCoreStorage.importData(backup);
 imported = await context.VidCoreStorage.getAll(S.favorites);
 assert.equal(imported[0].baseUrl, "https://ythd.org/embed");
@@ -83,4 +94,7 @@ assert.equal(imported[0].list, "Comedy");
 assert.equal(imported[0].next.baseUrl, "https://example-provider.test/embed");
 assert.equal(imported[0].next.id, "next-42");
 assert.equal(imported[0].next.title, "The Sequel");
+const channels = await context.VidCoreStorage.getAll(S.youtubeChannels);
+assert.equal(channels.length, 1);
+assert.equal(channels[0].title, "OpenAI");
 console.log("Compact provider backup and legacy import checks passed.");

@@ -12,6 +12,8 @@
     Object.freeze({ id: "vidup", label: "VidUp", baseUrl: "https://vidup.to" }),
     Object.freeze({ id: "youtube", label: "YouTube", baseUrl: "https://www.youtube.com" })
   ]);
+  const NATIVE_YOUTUBE_ORIGIN = "https://player.vidcore.test";
+  const YOUTUBE_WRAPPER = "youtube-player.html";
 
   function providerFor(value) {
     const normalized = metadata.normalizeBaseUrl(value);
@@ -25,16 +27,12 @@
     let url;
 
     if (normalized.mode === "youtube" || provider.id === "youtube") {
-      url = new URL(
-        `/embed/${encodeURIComponent(normalized.id)}`,
-        "https://www.youtube.com"
-      );
+      const native = Boolean(globalThis.chrome?.webview);
+      url = native
+        ? new URL(YOUTUBE_WRAPPER, `${NATIVE_YOUTUBE_ORIGIN}/`)
+        : new URL(YOUTUBE_WRAPPER, location.href);
+      url.searchParams.set("video", normalized.id);
       url.searchParams.set("autoplay", autoplay ? "1" : "0");
-      url.searchParams.set("enablejsapi", "1");
-      url.searchParams.set("playsinline", "1");
-      if (/^https?:$/.test(location.protocol)) {
-        url.searchParams.set("origin", location.origin);
-      }
       return url.href;
     }
 
@@ -64,9 +62,16 @@
 
   function youtubeCommand(action, args = []) {
     if (document.querySelector("#mode")?.value !== "youtube") return false;
+    const target = globalThis.chrome?.webview
+      ? NATIVE_YOUTUBE_ORIGIN
+      : location.origin;
     playerFrame()?.contentWindow?.postMessage(
-      JSON.stringify({ event: "command", func: action, args }),
-      "https://www.youtube.com"
+      {
+        type: "VIDCORE_YOUTUBE_COMMAND",
+        action,
+        args
+      },
+      target
     );
     return true;
   }

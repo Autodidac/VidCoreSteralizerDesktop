@@ -30,7 +30,8 @@ public:
 
     explicit WebViewHost(HWND window)
         : window_{window},
-          assets_index_{executable_directory() / L"assets" / L"index.html"},
+          assets_directory_{executable_directory() / L"assets"},
+          assets_index_{assets_directory_ / L"index.html"},
           home_url_{uri::file_url(assets_index_)} {}
 
     WebViewHost(const WebViewHost&) = delete;
@@ -81,6 +82,7 @@ public:
                                     return E_POINTER;
                                 }
 
+                                configure_virtual_host();
                                 configure_settings();
                                 register_events();
                                 resize();
@@ -119,6 +121,20 @@ public:
     }
 
 private:
+    void configure_virtual_host() const {
+        Microsoft::WRL::ComPtr<ICoreWebView2_3> mapped_webview;
+        if (FAILED(webview_.As(&mapped_webview)) || !mapped_webview ||
+            FAILED(mapped_webview->SetVirtualHostNameToFolderMapping(
+                L"player.vidcore.test",
+                assets_directory_.c_str(),
+                COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS
+            ))) {
+            report_error(
+                L"Unable to configure the local HTTPS YouTube player origin."
+            );
+        }
+    }
+
     [[nodiscard]] static std::filesystem::path executable_directory() {
         std::wstring module_path(32768, L'\0');
         const auto length = GetModuleFileNameW(
@@ -651,6 +667,7 @@ private:
     }
 
     HWND window_{};
+    std::filesystem::path assets_directory_;
     std::filesystem::path assets_index_;
     std::wstring home_url_;
     PopupBlocklist blocklist_;

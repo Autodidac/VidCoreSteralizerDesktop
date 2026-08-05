@@ -103,8 +103,8 @@
           <button
               id="previousButton"
               class="button"
-              title="Play the previous title in the active Library list">
-            Prev in list
+              title="Scan backward to the nearest public metadata match">
+            Previous
           </button>
 
           <button id="playButton" class="button primary">Play</button>
@@ -114,8 +114,8 @@
           <button
               id="nextButton"
               class="button"
-              title="Play the next title in the active Library list">
-            Next in list
+              title="Scan forward to the nearest public metadata match">
+            Next
           </button>
 
           <select id="randomMode" class="random-mode" aria-label="Random mode">
@@ -144,6 +144,18 @@
 
         <section class="transport panel">
           <div class="transport-row">
+            <button
+                id="listPreviousButton"
+                class="button"
+                title="Play the previous title in the active Library list">
+              Prev in list
+            </button>
+            <button
+                id="listNextButton"
+                class="button"
+                title="Play the next title in the active Library list">
+              Next in list
+            </button>
             <button id="stopButton" class="button danger">Stop</button>
             <button id="copyUrlButton" class="button">Copy URL</button>
             <button id="muteButton" class="button">Mute</button>
@@ -204,6 +216,7 @@
           <button class="tab" data-panel="favorites">Favorites</button>
           <button class="tab" data-panel="continue">Continue</button>
           <button class="tab" data-panel="recommended">Recommended</button>
+          <button class="tab" data-panel="youtube">YouTube</button>
           <button class="tab" data-panel="related">Related</button>
           <button class="tab" data-panel="blocked">Blocked</button>
         </nav>
@@ -238,6 +251,61 @@
 
         <section id="recommendedPanel" class="side-panel hidden">
           <div id="recommendedCards" class="card-list"></div>
+        </section>
+
+        <section id="youtubePanel" class="side-panel youtube-panel hidden">
+          <div class="youtube-hero">
+            <div>
+              <span class="eyebrow">Official YouTube playback</span>
+              <h3>Discover, collect, and follow</h3>
+              <p>Build video lists, get local picks, and follow channel uploads. YouTube playback may include ads.</p>
+            </div>
+            <div class="tool-row">
+              <button id="youtubeStorefrontButton" class="button primary">Free with ads movies</button>
+              <button id="youtubeShuffleButton" class="button">Fresh shuffle</button>
+            </div>
+          </div>
+
+          <div class="youtube-tools">
+            <input id="youtubeSearch" type="search" placeholder="Search your saved YouTube videos..." autocomplete="off">
+            <div id="youtubeListChips" class="list-chips"></div>
+            <div class="tool-row">
+              <input id="youtubeQuickAdd" placeholder="Paste a YouTube URL or video ID" spellcheck="false" autocomplete="off">
+              <button id="youtubeQuickAddButton" class="button">Add / edit</button>
+            </div>
+          </div>
+
+          <h3 class="section-title">Saved videos</h3>
+          <div id="youtubeSavedCards" class="card-list"></div>
+          <h3 class="section-title">Random from your lists</h3>
+          <div id="youtubeRandomCards" class="card-list"></div>
+          <h3 class="section-title">Related from your collection</h3>
+          <div id="youtubeRelatedCards" class="card-list"></div>
+
+          <div class="channel-watchlist">
+            <div>
+              <span class="eyebrow">Local subscription watchlist</span>
+              <h3>Channels</h3>
+              <p>Following here does not alter your YouTube account. Update checks use your optional YouTube Data API key, stored only on this device and excluded from JSON backups.</p>
+            </div>
+            <div class="tool-row">
+              <input id="youtubeApiKey" type="password" placeholder="YouTube Data API key" autocomplete="off">
+              <button id="youtubeSaveApiKeyButton" class="button">Save key</button>
+              <button id="youtubeForgetApiKeyButton" class="button danger">Forget</button>
+            </div>
+            <div class="tool-row">
+              <input id="youtubeChannelReference" placeholder="@handle or channel URL / ID" spellcheck="false" autocomplete="off">
+              <input id="youtubeChannelLabel" placeholder="Optional label" maxlength="100">
+            </div>
+            <div class="tool-row">
+              <button id="youtubeAddChannelButton" class="button primary">Follow locally</button>
+              <button id="youtubeCheckChannelsButton" class="button">Check all updates</button>
+            </div>
+            <span id="youtubeChannelStatus" class="muted-copy">No update check running.</span>
+          </div>
+          <div id="youtubeChannelCards" class="channel-list"></div>
+          <h3 class="section-title">Latest channel videos</h3>
+          <div id="youtubeChannelVideoCards" class="card-list"></div>
         </section>
 
         <section id="relatedPanel" class="side-panel hidden">
@@ -410,5 +478,6 @@
   <script src="providers.js"></script>
   <script src="scanner.js"></script>
   <script src="app.js"></script>
+  <script src="youtube.js"></script>
 </body>
 </html>

@@ -11,7 +11,11 @@ const code = fs.readFileSync(path.join(root, "assets", "providers.js"), "utf8");
 const postedMessages = [];
 const context = {
   URL,
-  location: { protocol: "https:", origin: "https://player.example" },
+  location: {
+    protocol: "https:",
+    origin: "https://player.example",
+    href: "https://player.example/app/index.html"
+  },
   document: {
     readyState: "loading",
     addEventListener() {},
@@ -54,15 +58,19 @@ assert.equal(build({ baseUrl: "https://vidcore.net", mode: "movie", id: "27205" 
 assert.equal(build({ baseUrl: "https://ythd.org/embed", mode: "movie", id: "tt0466342" }), "https://ythd.org/embed/tt0466342");
 assert.equal(build({ baseUrl: "https://ythd.org/embed", mode: "tv", id: "1396", season: 2, episode: 3 }), "https://ythd.org/embed/1396/2/3");
 assert.equal(build({ baseUrl: "https://vidup.to", mode: "tv", id: "1396", season: 2, episode: 3 }), "https://vidup.to/tv/1396/2/3?autoPlay=true&title=true&poster=true&fullscreenButton=true");
-assert.equal(build({ baseUrl: "https://www.youtube.com", mode: "youtube", id: "dQw4w9WgXcQ" }), "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&enablejsapi=1&playsinline=1&origin=https%3A%2F%2Fplayer.example");
+assert.equal(build({ baseUrl: "https://www.youtube.com", mode: "youtube", id: "dQw4w9WgXcQ" }), "https://player.example/app/youtube-player.html?video=dQw4w9WgXcQ&autoplay=1");
 context.VidCoreProviders.requestVolume(37);
 context.VidCoreProviders.requestMute(true);
 context.VidCoreProviders.requestPause();
 assert.deepEqual(
-  postedMessages.map(item => JSON.parse(item.message).func),
+  postedMessages.map(item => item.message.action),
   ["setVolume", "mute", "pauseVideo"]
 );
-assert.ok(postedMessages.every(item => item.target === "https://www.youtube.com"));
+assert.ok(postedMessages.every(item =>
+  item.message.type === "VIDCORE_YOUTUBE_COMMAND" &&
+  item.target === "https://player.example"
+));
+assert.match(code, /https:\/\/player\.vidcore\.test/);
 for (const htmlPath of [
   path.join(root, "assets", "index.html"),
   path.join(repositoryRoot, "VidCoreWebPlayer", "index.html")

@@ -26,6 +26,9 @@ if errorlevel 1 exit /b %errorlevel%
 node --check assets\app.js
 if errorlevel 1 exit /b %errorlevel%
 
+node --check assets\youtube.js
+if errorlevel 1 exit /b %errorlevel%
+
 node tests\static-smoke.test.mjs
 if errorlevel 1 exit /b %errorlevel%
 

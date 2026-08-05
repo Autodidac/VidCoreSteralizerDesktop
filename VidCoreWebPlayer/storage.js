@@ -2,11 +2,12 @@
 
 (() => {
   const DB_NAME = "vidcore-native-library";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORES = Object.freeze({
     favorites: "favorites",
     lists: "lists",
-    history: "history"
+    history: "history",
+    youtubeChannels: "youtubeChannels"
   });
   const STORE_NAMES = Object.values(STORES);
   const FALLBACK_PREFIX = "vidcoreNative.fallback.";
@@ -193,6 +194,18 @@
           history.createIndex(
             "lastPlayedAt",
             "lastPlayedAt",
+            { unique: false }
+          );
+        }
+
+        if (!database.objectStoreNames.contains(STORES.youtubeChannels)) {
+          const channels = database.createObjectStore(
+            STORES.youtubeChannels,
+            { keyPath: "key" }
+          );
+          channels.createIndex(
+            "lastCheckedAt",
+            "lastCheckedAt",
             { unique: false }
           );
         }
@@ -516,10 +529,11 @@
   }
 
   async function exportData(extra = {}) {
-    const [favorites, lists, history] = await Promise.all([
+    const [favorites, lists, history, youtubeChannels] = await Promise.all([
       getAll(STORES.favorites),
       getAll(STORES.lists),
-      getAll(STORES.history)
+      getAll(STORES.history),
+      getAll(STORES.youtubeChannels)
     ]);
     const providers = providerCatalog([...favorites, ...history]);
 
@@ -531,6 +545,7 @@
       favorites: favorites.map(entry => compactEntry(entry, providers)),
       lists,
       history: history.map(entry => compactEntry(entry, providers)),
+      youtubeChannels,
       ...extra
     };
   }
@@ -544,6 +559,9 @@
     const rawFavorites = Array.isArray(payload.favorites) ? payload.favorites : [];
     const lists = Array.isArray(payload.lists) ? payload.lists : [];
     const rawHistory = Array.isArray(payload.history) ? payload.history : [];
+    const youtubeChannels = Array.isArray(payload.youtubeChannels)
+      ? payload.youtubeChannels
+      : [];
     const favorites = rawFavorites
       .map(entry => expandEntry(entry, providers))
       .filter(Boolean);
@@ -571,10 +589,15 @@
       if (entry.key) await target.put(STORES.history, entry);
     }
 
+    for (const channel of youtubeChannels) {
+      if (channel?.key) await target.put(STORES.youtubeChannels, channel);
+    }
+
     return {
       favorites: favorites.length,
       lists: lists.length,
       history: history.length,
+      youtubeChannels: youtubeChannels.length,
       importedVersion: Number(payload.version) || 1
     };
   }

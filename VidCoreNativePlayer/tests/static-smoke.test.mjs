@@ -10,6 +10,11 @@ const html = fs.readFileSync(path.join(root, "assets", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "assets", "app.js"), "utf8");
 const metadata = fs.readFileSync(path.join(root, "assets", "metadata.js"), "utf8");
 const styles = fs.readFileSync(path.join(root, "assets", "styles.css"), "utf8");
+const youtube = fs.readFileSync(path.join(root, "assets", "youtube.js"), "utf8");
+const youtubePlayer = fs.readFileSync(
+  path.join(root, "assets", "youtube-player.html"),
+  "utf8"
+);
 const additions = fs.readFileSync(path.join(root, "assets", "builtin-additions.js"), "utf8");
 const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
@@ -63,6 +68,12 @@ assert.match(
   /<option value="database" selected>Database pick<\/option>/
 );
 assert.match(html, /data-panel="favorites">Favorites<\/button>/);
+assert.ok(
+  html.indexOf('data-panel="recommended"') <
+  html.indexOf('data-panel="youtube"') &&
+  html.indexOf('data-panel="youtube"') <
+  html.indexOf('data-panel="related"')
+);
 assert.match(app, /const names = \["All", "Favorites", \.\.\.customNames\]/);
 assert.match(app, /function isFavoriteEntry/);
 assert.match(app, /local-artwork/);
@@ -96,6 +107,10 @@ assert.match(app, /favorite: elements\.saveFavorite\.checked/);
 assert.match(app, /list: "Uncategorized"/);
 assert.doesNotMatch(app, /staleEmptyLists/);
 assert.match(app, /async function playListNeighbor/);
+assert.match(app, /previousButton\.addEventListener[\s\S]*scanNeighbor\(-1\)/);
+assert.match(app, /listPreviousButton\.addEventListener[\s\S]*playListNeighbor\(-1\)/);
+assert.match(html, /id="previousButton"[\s\S]*>\s*Previous\s*<\/button>/);
+assert.match(html, /id="listPreviousButton"[\s\S]*>\s*Prev in list\s*<\/button>/);
 assert.match(app, /function nextEntryFromDialog/);
 assert.match(app, /async function playSeriesNext/);
 assert.match(app, /VidCoreProviders.requestVolume/);
@@ -126,6 +141,9 @@ assert.ok(additions.includes('"name": "Fantasy"'));
 
 assert.match(webview, /NewWindowRequested/);
 assert.match(webview, /AddScriptToExecuteOnDocumentCreated/);
+assert.match(webview, /SetVirtualHostNameToFolderMapping/);
+assert.match(webview, /player\.vidcore\.test/);
+assert.match(webview, /COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS/);
 assert.match(webview, /open-external/);
 assert.match(webview, /external-denied/);
 assert.match(webview, /fastflix\.to/);
@@ -144,6 +162,15 @@ assert.match(webview, /youtu\.be/);
 assert.doesNotMatch(webview, /blocked-count/);
 assert.doesNotMatch(webview, /resolve-image|delete-image-cache|prune-image-cache/);
 assert.doesNotMatch(webview, /WinHttpOpen|ImageCache/);
+assert.match(youtubePlayer, /origin: location\.origin/);
+assert.match(youtubePlayer, /VIDCORE_YOUTUBE_COMMAND/);
+const wrapperScriptMatch = youtubePlayer.match(/<script>([\s\S]*?)<\/script>/);
+assert.ok(wrapperScriptMatch);
+new Function(wrapperScriptMatch[1]);
+assert.match(youtube, /youtubeChannels/);
+assert.match(youtube, /playlistItems/);
+assert.match(youtube, /forHandle/);
+assert.doesNotMatch(youtube + youtubePlayer, /SharpGrabber|yt-dlp|youtube-dl|googlevideo.*fetch/i);
 
 for (const name of [
   "app.js",
