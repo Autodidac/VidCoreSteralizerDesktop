@@ -279,6 +279,126 @@
       "createdAt": "2026-08-04T17:51:13.657Z",
       "updatedAt": "2026-08-04T17:51:22.089Z",
       "provider": 1
+    },
+    {
+      "mode": "movie",
+      "id": "85",
+      "title": "Raiders of the Lost Ark",
+      "description": "1981 action-adventure film",
+      "year": "1981",
+      "image": "",
+      "imdb": "tt0082971",
+      "tmdb": "85",
+      "genres": [
+        "action film",
+        "adventure film"
+      ],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "unresolved",
+      "list": "Action",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-05T14:12:00.000Z",
+      "updatedAt": "2026-08-05T14:12:00.000Z"
+    },
+    {
+      "mode": "movie",
+      "id": "87",
+      "title": "Indiana Jones and the Temple of Doom",
+      "description": "1984 action-adventure film",
+      "year": "1984",
+      "image": "",
+      "imdb": "tt0087469",
+      "tmdb": "87",
+      "genres": [
+        "action film",
+        "adventure film"
+      ],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "unresolved",
+      "list": "Action",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-05T14:12:00.000Z",
+      "updatedAt": "2026-08-05T14:12:00.000Z"
+    },
+    {
+      "mode": "movie",
+      "id": "89",
+      "title": "Indiana Jones and the Last Crusade",
+      "description": "1989 action-adventure film",
+      "year": "1989",
+      "image": "",
+      "imdb": "tt0097576",
+      "tmdb": "89",
+      "genres": [
+        "action film",
+        "adventure film"
+      ],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "unresolved",
+      "list": "Action",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-05T14:12:00.000Z",
+      "updatedAt": "2026-08-05T14:12:00.000Z"
+    },
+    {
+      "mode": "movie",
+      "id": "217",
+      "title": "Indiana Jones and the Kingdom of the Crystal Skull",
+      "description": "2008 action-adventure film",
+      "year": "2008",
+      "image": "",
+      "imdb": "tt0367882",
+      "tmdb": "217",
+      "genres": [
+        "action film",
+        "adventure film"
+      ],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "unresolved",
+      "list": "Action",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-05T14:12:00.000Z",
+      "updatedAt": "2026-08-05T14:12:00.000Z"
+    },
+    {
+      "mode": "movie",
+      "id": "335977",
+      "title": "Indiana Jones and the Dial of Destiny",
+      "description": "2023 action-adventure film",
+      "year": "2023",
+      "image": "",
+      "imdb": "tt1462764",
+      "tmdb": "335977",
+      "genres": [
+        "action film",
+        "adventure film"
+      ],
+      "genreUris": [],
+      "wikidata": "",
+      "article": "",
+      "wikipedia": "",
+      "resolutionStatus": "unresolved",
+      "list": "Action",
+      "notes": "",
+      "watched": false,
+      "createdAt": "2026-08-05T14:12:00.000Z",
+      "updatedAt": "2026-08-05T14:12:00.000Z"
     }
   ];
 
@@ -324,7 +444,7 @@
 
     return {
       ...payload,
-      exportedAt: "2026-08-05T06:57:40.704Z",
+      exportedAt: "2026-08-05T14:12:00.000Z",
       favorites: mergedFavorites,
       lists: mergedLists
     };

@@ -33,7 +33,9 @@ for (const id of [
   "seeflixButton",
   "movies123Button",
   "deleteListButton",
-  "saveFavorite"
+  "saveFavorite",
+  "saveNewListName",
+  "saveAddListButton"
 ]) {
   assert.match(html, new RegExp(`id="${id}"`));
 }
@@ -83,7 +85,10 @@ assert.match(app, /async function deleteSelectedList/);
 assert.match(app, /VidCoreStorage\.remove\(VidCoreStorage\.STORES\.lists, name\)/);
 assert.match(app, /favorite: elements\.saveFavorite\.checked/);
 assert.match(app, /list: "Uncategorized"/);
-assert.match(app, /staleEmptyLists/);
+assert.doesNotMatch(app, /staleEmptyLists/);
+assert.match(app, /async function addListFromDialog/);
+assert.match(app, /state\.selectedList = destinationList/);
+assert.match(app, /showPanel\("library"\)/);
 for (const title of [
   "Wednesday",
   "Landman",
@@ -93,7 +98,12 @@ for (const title of [
   "The Sandman",
   "Cape Fear",
   "TV 298714 · S1 E1",
-  "TV 319179 · S1 E1"
+  "TV 319179 · S1 E1",
+  "Raiders of the Lost Ark",
+  "Indiana Jones and the Temple of Doom",
+  "Indiana Jones and the Last Crusade",
+  "Indiana Jones and the Kingdom of the Crystal Skull",
+  "Indiana Jones and the Dial of Destiny"
 ]) {
   assert.ok(additions.includes(`"title": "${title}"`));
 }

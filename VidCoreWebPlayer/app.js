@@ -67,8 +67,8 @@
     relatedPanel: $("#relatedPanel"),
     blockedPanel: $("#blockedPanel"),
     librarySearch: $("#librarySearch"),
-    newListName: $("#newListName"),
-    addListButton: $("#addListButton"),
+    saveNewListName: $("#saveNewListName"),
+    saveAddListButton: $("#saveAddListButton"),
     resolveListButton: $("#resolveListButton"),
     markListWatchedButton: $("#markListWatchedButton"),
     deleteListButton: $("#deleteListButton"),
@@ -902,28 +902,15 @@
   async function renderListControls() {
     if (!state.storageReady) return;
 
-    let { lists, favorites } = await listData();
+    const { lists, favorites } = await listData();
     const customCount = name =>
       favorites.filter(entry => categoryForEntry(entry) === name).length;
-
-    const staleEmptyLists = lists.filter(list =>
-      list.name !== "Favorites" &&
-      list.name !== state.selectedList &&
-      customCount(list.name) === 0
-    );
-    for (const list of staleEmptyLists) {
-      await VidCoreStorage.remove(VidCoreStorage.STORES.lists, list.name);
-    }
-    if (staleEmptyLists.length) {
-      lists = lists.filter(list => !staleEmptyLists.some(stale => stale.name === list.name));
-    }
 
     const storedNames = lists
       .map(list => list.name)
       .filter(name => name !== "Favorites");
     const entryNames = favorites.map(categoryForEntry);
     const customNames = [...new Set([...storedNames, ...entryNames])]
-      .filter(name => customCount(name) > 0 || name === state.selectedList)
       .sort((left, right) => left.localeCompare(right));
     const names = ["All", "Favorites", ...customNames];
 
@@ -955,6 +942,7 @@
     elements.deleteListButton.classList.toggle("hidden", !customSelected);
     elements.deleteListButton.disabled = !customSelected;
 
+    const previousSelection = elements.saveList.value;
     elements.saveList.replaceChildren();
     const saveCategories = customNames.includes("Uncategorized")
       ? customNames
@@ -964,6 +952,9 @@
       option.value = name;
       option.textContent = name;
       elements.saveList.append(option);
+    }
+    if (saveCategories.includes(previousSelection)) {
+      elements.saveList.value = previousSelection;
     }
   }
 
@@ -1220,6 +1211,7 @@
     elements.deleteDialogButton.classList.toggle("hidden", !existing);
     elements.saveNotes.value = existing?.notes || "";
     elements.saveWatched.checked = Boolean(existing?.watched);
+    elements.saveNewListName.value = "";
     elements.saveDialog.showModal();
   }
 
@@ -1238,6 +1230,7 @@
         ? state.currentMetadata
         : null;
     const now = new Date().toISOString();
+    const destinationList = elements.saveList.value || "Uncategorized";
 
     await VidCoreStorage.put(
       VidCoreStorage.STORES.favorites,
@@ -1250,7 +1243,7 @@
           metadata?.title ||
           existing?.title ||
           VidCoreMetadata.fallbackTitle(entry),
-        list: elements.saveList.value || "Uncategorized",
+        list: destinationList,
         favorite: elements.saveFavorite.checked,
         notes: elements.saveNotes.value.trim(),
         watched: elements.saveWatched.checked,
@@ -1280,8 +1273,10 @@
     elements.saveDialog.close();
     state.dialogEntry = null;
     state.editingKey = "";
+    state.selectedList = destinationList;
+    showPanel("library");
     await renderAllLibraryViews();
-    setStatus("Library updated", "The title was saved.", "ok");
+    setStatus("Library updated", `Saved to ${destinationList}.`, "ok");
   }
 
   async function deleteFavorite(entry) {
@@ -1344,46 +1339,46 @@
     await renderContinueWatching();
   }
 
-  async function addList() {
-    const name = elements.newListName.value.trim();
-    if (!name) {
+  async function createList(name) {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) {
       setStatus("List name required", "Enter a name first.", "warn");
-      return;
+      return "";
     }
 
-    if (RESERVED_LISTS.has(name.toLocaleLowerCase())) {
+    if (RESERVED_LISTS.has(trimmed.toLocaleLowerCase())) {
       setStatus(
         "Reserved list name",
         "Choose a name other than All, Favorites, Continue, Recommended, Related, or Blocked.",
         "warn"
       );
-      return;
+      return "";
     }
 
-    const lists = await VidCoreStorage.getAll(
-      VidCoreStorage.STORES.lists
+    const lists = await VidCoreStorage.getAll(VidCoreStorage.STORES.lists);
+    const existing = lists.find(
+      list => list.name.toLocaleLowerCase() === trimmed.toLocaleLowerCase()
     );
-
-    if (lists.some(
-      list => list.name.toLocaleLowerCase() === name.toLocaleLowerCase()
-    )) {
-      setStatus("List already exists", name, "warn");
-      return;
-    }
+    if (existing) return existing.name;
 
     await VidCoreStorage.put(
       VidCoreStorage.STORES.lists,
       {
-        name,
+        name: trimmed,
         createdAt: new Date().toISOString()
       }
     );
+    return trimmed;
+  }
 
-    elements.newListName.value = "";
-    state.selectedList = name;
+  async function addListFromDialog() {
+    const name = await createList(elements.saveNewListName.value);
+    if (!name) return;
+
+    elements.saveNewListName.value = "";
     await renderListControls();
-    await renderLibrary();
-    setStatus("List created", name, "ok");
+    elements.saveList.value = name;
+    setStatus("List ready", `${name} is selected for this title.`, "ok");
   }
 
   async function deleteSelectedList() {
@@ -2096,10 +2091,17 @@
       "input",
       renderLibrary
     );
-    elements.addListButton.addEventListener("click", addList);
-    elements.newListName.addEventListener("keydown", event => {
+    elements.saveAddListButton.addEventListener("click", () => {
+      addListFromDialog().catch(error =>
+        setStatus("List creation failed", error.message, "error")
+      );
+    });
+    elements.saveNewListName.addEventListener("keydown", event => {
       if (event.key === "Enter") {
-        addList();
+        event.preventDefault();
+        addListFromDialog().catch(error =>
+          setStatus("List creation failed", error.message, "error")
+        );
       }
     });
     elements.resolveListButton.addEventListener(

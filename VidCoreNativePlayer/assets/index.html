@@ -201,14 +201,6 @@
                 autocomplete="off">
 
             <div class="tool-row">
-              <input
-                  id="newListName"
-                  placeholder="New list name"
-                  maxlength="40">
-              <button id="addListButton" class="button">Add list</button>
-            </div>
-
-            <div class="tool-row">
               <button id="resolveListButton" class="button">Resolve list</button>
               <button id="markListWatchedButton" class="button">Mark watched</button>
               <button id="deleteListButton" class="button danger hidden">Delete list</button>
@@ -269,6 +261,16 @@
         <select id="saveList"></select>
       </label>
 
+      <div class="tool-row">
+        <input
+            id="saveNewListName"
+            placeholder="Create a new list"
+            maxlength="40">
+        <button id="saveAddListButton" class="button" type="button">
+          Create list
+        </button>
+      </div>
+
       <label class="field">
         <span>Notes</span>
         <textarea
@@ -304,7 +306,7 @@
     <div class="dialog-body">
       <h3>Library storage</h3>
       <p>
-        Favorites are an overlay and no longer replace a title's category. Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. The native player creates data/artwork/category/title folders; drop several JPG, PNG, WebP, GIF, BMP, or AVIF images into a title folder and one is selected randomly for that launch. Those user-owned files are never downloaded or deleted by the player. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
+        Favorites are an overlay and no longer replace a title's category. Create lists directly inside Edit/Save; empty lists persist until you explicitly delete them, and saving switches Library to the destination list. Favorites, lists, notes, watched state, Continue Watching, and history use IndexedDB when available. In the native player, browser storage and cache stay in the portable data folder beside the executable. The native player creates data/artwork/category/title folders; drop several JPG, PNG, WebP, GIF, BMP, or AVIF images into a title folder and one is selected randomly for that launch. Those user-owned files are never downloaded or deleted by the player. JSON export stores provider categories once, then uses compact provider indexes per title. Version 1 backups with full provider URLs remain import-compatible.
       </p>
       <p>
         Exact playback position is unavailable because the provider frame is cross-origin. Continue Watching records played titles and manual completion state.

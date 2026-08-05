@@ -159,3 +159,12 @@ The native executable does not contain a custom page scraper, native image downl
 - Favorites is now a boolean overlay instead of an exclusive category. Legacy Favorites-only entries migrate to `Uncategorized` while remaining favorited.
 - Related automatically hydrates the current saved title, retries public genre matching using labels when Wikidata genre URIs are absent, and falls back to genre/category matches from the local library.
 - Artwork validation now preserves sequel numbers, rejects conflicting years, and blocks book/title-page, ancient-text, soundtrack, album, and unrelated historical-poster matches such as the reported Odyssey, Nobody 2, and In the Grey failures.
+
+## v0.2.15 list durability and Action defaults
+
+- Custom list creation now lives inside Edit/Save.
+- Empty custom lists persist until explicitly deleted.
+- Saving a title switches Library to its destination list without deleting the list or item.
+- Raiders of the Lost Ark and all four Indiana Jones sequels are included in Action defaults.
+- The supplied standalone IMDb resolver was reviewed, but its WinHTTP downloader and hidden page automation remain excluded from the shipping player under the Defender-safe boundary.
+

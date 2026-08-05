@@ -37,14 +37,15 @@ Keep these behaviors unless the user explicitly changes them:
 - The interface uses the blue theme and square artwork slots.
 - Favorites is permanent and acts as an overlay; favoriting a title never removes its normal category.
 - Deleting a custom list moves its titles to `Uncategorized` and preserves them in Favorites.
-- Empty custom lists are hidden and pruned after they are no longer selected.
+- Empty custom lists persist until the user explicitly deletes them.
+- Custom lists are created inside Edit/Save and saving switches Library to the destination list.
 - Native and Web implementations remain synchronized for shared UI, library, provider, backup, and list-management behavior.
 
 ## Library and backup invariants
 
 The built-in seed currently represents the non-destructive union of the supplied August 4 and August 5 backups:
 
-- 114 provider-aware saved entries.
+- 119 provider-aware saved entries.
 - 25 named lists.
 - Zero seeded history entries.
 

@@ -25,3 +25,12 @@ Start with the README inside the version you want to run.
 - New JSON backups use compact provider-indexed backups and still import the version 1 full-URL format.
 
 - v0.2.4 places playback/resolve controls below transport and includes a non-destructive built-in starter library.
+
+## v0.2.15 list durability and Action defaults
+
+- Custom list creation now lives inside Edit/Save.
+- Empty custom lists persist until explicitly deleted.
+- Saving a title switches Library to its destination list without deleting the list or item.
+- Raiders of the Lost Ark and all four Indiana Jones sequels are included in Action defaults.
+- The supplied standalone IMDb resolver was reviewed, but its WinHTTP downloader and hidden page automation remain excluded from the shipping player under the Defender-safe boundary.
+

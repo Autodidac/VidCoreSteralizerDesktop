@@ -103,9 +103,16 @@
 - [x] Remove the temporary v0.2.14 dispatcher and cleanup workflows, delete the trigger branch, and close the trigger pull request without merging it.
 - [x] Confirm only `main` remains after v0.2.14 release cleanup.
 
+- [x] Move custom list creation into Edit/Save and immediately select the new list for the current title.
+- [x] Keep empty custom lists until the user explicitly deletes them.
+- [x] After Save, switch Library to the destination list without deleting the list or saved title.
+- [x] Add Raiders of the Lost Ark and the four Indiana Jones sequels to the Action defaults.
+- [x] Review the supplied C++23 IMDb resolver and preserve the Defender-safe shipping boundary by excluding its WinHTTP downloader and hidden page automation.
+- [x] Stage v0.2.15 with synchronized Native/Web behavior, 119 built-in entries, tests, and release metadata.
+
 ## Open / provider-limited
 
-- [ ] Verify the downloadable v0.2.14 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
+- [ ] Verify the downloadable v0.2.15 Windows artifact against the affected user's current local Microsoft Defender signatures; the GitHub runner cannot reproduce every endpoint signature state.
 - [ ] Reintroduce IMDb/TMDB multi-poster browsing only through an independently verified or signed implementation that does not trigger endpoint protection.
 - [ ] Add Authenticode signing or Microsoft Store distribution so new native binaries can build publisher reputation.
 - [ ] Exact playback position requires a provider-supported cross-origin messaging API.

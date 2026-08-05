@@ -28,7 +28,7 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
   vm.runInContext(fs.readFileSync(path.join(root, "builtin-additions.js"), "utf8"), context);
   const library = await context.VidCoreBuiltInLibraryPromise;
   assert.equal(library.version, 2);
-  assert.equal(library.favorites.length, 114);
+  assert.equal(library.favorites.length, 119);
   assert.equal(library.lists.length, 25);
   assert.equal(library.history.length, 0);
 
@@ -42,11 +42,22 @@ for (const root of [nativeRoot + "/assets", repositoryRoot + "/VidCoreWebPlayer"
     "The Sandman",
     "Cape Fear",
     "TV 298714 · S1 E1",
-    "TV 319179 · S1 E1"
+    "TV 319179 · S1 E1",
+    "Raiders of the Lost Ark",
+    "Indiana Jones and the Temple of Doom",
+    "Indiana Jones and the Last Crusade",
+    "Indiana Jones and the Kingdom of the Crystal Skull",
+    "Indiana Jones and the Dial of Destiny"
   ]) {
     assert.ok(titles.has(title), `missing built-in title: ${title}`);
   }
   assert.ok(library.lists.some(list => list.name === "Fantasy"));
+  const indianaJones = library.favorites.filter(entry =>
+    entry.title === "Raiders of the Lost Ark" ||
+    entry.title.startsWith("Indiana Jones")
+  );
+  assert.equal(indianaJones.length, 5);
+  assert.ok(indianaJones.every(entry => entry.list === "Action"));
 }
 
 const storage = fs.readFileSync(path.join(nativeRoot, "assets", "storage.js"), "utf8");
