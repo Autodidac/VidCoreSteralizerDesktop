@@ -141,6 +141,12 @@
 - [x] Publish v0.2.18 and confirm the GitHub validation, MSVC build, runner Defender scan, packaging, release upload, and RELEASE_STATUS.md success record.
 - [x] Verify the four downloadable v0.2.18 assets, both ZIP checksums, package contents, embedded security report, executable hash/signature state, and current-signature local Defender scans of the downloaded native ZIP and extracted executable.
 
+- [x] Preserve the supplied `VidCoreYouTubePlayer-Cpp23-v0.2.2-browser-controls.zip` as a guide artifact and port only compatible behavior into the maintained Native/Web applications.
+- [x] Add synchronized YouTube Home, Movies, current-video, URL, video-ID, and search launch controls.
+- [x] Add an origin-checked official IFrame Player state bridge and live seek control for YouTube playback.
+- [x] Automatically open the full YouTube watch page for embed errors 5, 101, 150, and 153 while retaining the manual fallback button.
+- [x] Keep the Defender-safe boundary while porting the guide: no native extension loading, process/audio enumeration, protected-stream extraction, or native page scraping.
+
 ## Open / provider-limited
 
 - [ ] Confirm on the affected Windows machine that the identified HTTPS wrapper removes YouTube Error 153 for embeddable videos; owner-disabled and region-limited videos may still require Watch on YouTube.

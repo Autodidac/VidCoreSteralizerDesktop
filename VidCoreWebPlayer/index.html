@@ -176,6 +176,12 @@
             <output id="volumeOutput">100%</output>
           </div>
 
+          <div id="youtubeSeekRow" class="volume-row hidden">
+            <span>Seek</span>
+            <input id="youtubeSeekSlider" type="range" min="0" max="1000" step="1" value="0" disabled>
+            <output id="youtubeSeekOutput">0:00 / 0:00</output>
+          </div>
+
           <div class="zoom-row">
             <span>UI zoom</span>
             <button id="zoomOutButton" class="round-button">−</button>
@@ -261,12 +267,19 @@
               <p>Build video lists, get local picks, and follow channel uploads. YouTube playback may include ads.</p>
             </div>
             <div class="tool-row">
-              <button id="youtubeStorefrontButton" class="button primary">Free with ads movies</button>
+              <button id="youtubeHomeButton" class="button">YouTube home</button>
+              <button id="youtubeMoviesButton" class="button primary">YouTube Movies</button>
+              <button id="youtubeStorefrontButton" class="button">Free with ads</button>
               <button id="youtubeShuffleButton" class="button">Fresh shuffle</button>
             </div>
           </div>
 
           <div class="youtube-tools">
+            <div class="tool-row youtube-browser-row">
+              <input id="youtubeBrowseInput" placeholder="YouTube URL, video ID, or search" spellcheck="false" autocomplete="off">
+              <button id="youtubeBrowseButton" class="button primary">Open</button>
+              <button id="youtubeCurrentWatchButton" class="button">Current video</button>
+            </div>
             <input id="youtubeSearch" type="search" placeholder="Search your saved YouTube videos..." autocomplete="off">
             <div id="youtubeListChips" class="list-chips"></div>
             <div class="tool-row">
@@ -476,6 +489,7 @@
   <script src="storage.js"></script>
   <script src="metadata.js"></script>
   <script src="providers.js"></script>
+  <script src="youtube-controls.js"></script>
   <script src="scanner.js"></script>
   <script src="app.js"></script>
   <script src="youtube.js"></script>

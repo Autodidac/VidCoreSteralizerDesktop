@@ -51,6 +51,7 @@
       const message = document.querySelector("#message");
       const watchLink = document.querySelector("#watchLink");
       let player = null;
+      let stateTimer = 0;
 
       const watchUrl = videoId
         ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
@@ -72,6 +73,28 @@
         fallback.hidden = true;
       }
 
+      function publishState() {
+        if (!player || typeof player.getCurrentTime !== "function") {
+          return;
+        }
+        try {
+          parent.postMessage({
+            type: "VIDCORE_YOUTUBE_STATE",
+            videoId,
+            currentTime: player.getCurrentTime(),
+            duration: player.getDuration(),
+            state: player.getPlayerState()
+          }, "*");
+        } catch {
+        }
+      }
+
+      function startStateUpdates() {
+        clearInterval(stateTimer);
+        publishState();
+        stateTimer = setInterval(publishState, 1000);
+      }
+
       if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) {
         showFallback("This YouTube video ID is invalid.");
         return;
@@ -90,8 +113,20 @@
             origin: location.origin
           },
           events: {
-            onReady: hideFallback,
+            onReady() {
+              hideFallback();
+              startStateUpdates();
+            },
             onError(event) {
+              const code = Number(event.data) || 0;
+              const fallbackCodes = new Set([5, 101, 150, 153]);
+              parent.postMessage({
+                type: "VIDCORE_YOUTUBE_ERROR",
+                videoId,
+                code,
+                fallback: fallbackCodes.has(code),
+                watchUrl
+              }, "*");
               showFallback(
                 event.data === 153
                   ? "YouTube could not identify this embed client. Open the video on YouTube."
@@ -107,11 +142,23 @@
             event.data.type !== "VIDCORE_YOUTUBE_COMMAND" || !player) {
           return;
         }
-        const actions = new Set(["pauseVideo", "mute", "unMute", "setVolume"]);
         const action = String(event.data.action || "");
-        if (!actions.has(action) || typeof player[action] !== "function") return;
         const args = Array.isArray(event.data.args) ? event.data.args : [];
+        if (action === "seekFraction") {
+          const duration = player.getDuration();
+          const fraction = Math.max(0, Math.min(1, Number(args[0]) || 0));
+          if (Number.isFinite(duration) && duration > 0) {
+            player.seekTo(duration * fraction, true);
+            publishState();
+          }
+          return;
+        }
+        const actions = new Set([
+          "playVideo", "pauseVideo", "stopVideo", "mute", "unMute", "setVolume"
+        ]);
+        if (!actions.has(action) || typeof player[action] !== "function") return;
         player[action](...args);
+        publishState();
       });
 
       const api = document.createElement("script");

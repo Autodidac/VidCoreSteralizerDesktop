@@ -21,6 +21,7 @@ This repository contains the complete desktop player at its root.
 - Movie IDs use numeric TMDB or IMDb identifiers; YouTube accepts an 11-character ID or common video URL.
 - TV IDs include season and episode.
 - Play, Pause, Stop, Mute, provider-supported volume, Theater, Fullscreen, Copy URL, UI zoom, and DevTools are available.
+- YouTube playback adds a live position/seek control backed by the official IFrame Player API.
 - Previous and Next retain metadata-first scanning, matching the pre-v0.2.16 behavior.
 - A separate Prev in list / Next in list pair in the lower transport section moves through the selected and filtered Library list with wraparound.
 - Random numeric and public-database discovery remain available.
@@ -32,6 +33,8 @@ This repository contains the complete desktop player at its root.
 - YouTube oEmbed title, author, and exact video thumbnail metadata
 - Official YouTube playback through the local https://player.vidcore.test WebView2 virtual host so embed requests carry client identity instead of a top-level file:// identity
 - Dedicated YouTube saved lists, search, random and locally related discovery, live Free with ads storefront access, and local channel subscriptions
+- YouTube Home, Movies, current-video, URL, video-ID, and search controls open approved YouTube pages in the normal browser.
+- Embed errors 5, 101, 150, and 153 automatically open the full watch page; the in-player Watch on YouTube button remains available when browser popup policy blocks automatic fallback.
 - Optional official YouTube Data API channel/upload checks; the key stays in local browser storage and is excluded from JSON backup
 - English Wikipedia fallback for missing names, descriptions, and artwork
 - Related movie or TV suggestions based on resolved genres
