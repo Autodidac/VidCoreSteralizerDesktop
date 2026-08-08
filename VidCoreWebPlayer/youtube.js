@@ -2,6 +2,8 @@
 
 (() => {
   const YT = "https://www.youtube.com";
+  const HOME = `${YT}/`;
+  const MOVIES = `${YT}/movies`;
   const STOREFRONT = "https://www.youtube.com/feed/storefront?bp=ogUCKAY";
   const API = "https://www.googleapis.com/youtube/v3";
   const KEY_STORAGE = "vidcoreNative.youtubeDataApiKey";
@@ -9,8 +11,13 @@
   const el = {
     panel: $("#youtubePanel"),
     tab: $('.tab[data-panel="youtube"]'),
+    home: $("#youtubeHomeButton"),
+    movies: $("#youtubeMoviesButton"),
     storefront: $("#youtubeStorefrontButton"),
     shuffle: $("#youtubeShuffleButton"),
+    browse: $("#youtubeBrowseInput"),
+    browseButton: $("#youtubeBrowseButton"),
+    currentWatch: $("#youtubeCurrentWatchButton"),
     search: $("#youtubeSearch"),
     chips: $("#youtubeListChips"),
     quick: $("#youtubeQuickAdd"),
@@ -71,6 +78,39 @@
     } else {
       globalThis.open(url, "_blank", "noopener,noreferrer");
     }
+  }
+
+  function browseUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return HOME;
+    try {
+      const id = VidCoreMetadata.normalizeMediaId("youtube", raw);
+      return `${YT}/watch?v=${encodeURIComponent(id)}`;
+    } catch {
+    }
+    try {
+      const candidate = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      const host = candidate.hostname.toLowerCase();
+      if (host === "youtu.be" || host.endsWith(".youtu.be") ||
+          host === "youtube.com" || host.endsWith(".youtube.com")) {
+        candidate.protocol = "https:";
+        return candidate.href;
+      }
+    } catch {
+    }
+    return `${YT}/results?search_query=${encodeURIComponent(raw)}`;
+  }
+
+  function browse() {
+    external(browseUrl(el.browse.value));
+  }
+
+  function openCurrentVideo() {
+    if (el.mode.value !== "youtube") {
+      throw new Error("Select or play a YouTube video first.");
+    }
+    const id = VidCoreMetadata.normalizeMediaId("youtube", el.id.value);
+    external(`${YT}/watch?v=${encodeURIComponent(id)}`);
   }
 
   function entry(value, extra = {}) {
@@ -561,6 +601,16 @@
 
   el.key.value = apiKey();
   el.storefront.addEventListener("click", () => external(STOREFRONT));
+  el.home.addEventListener("click", () => external(HOME));
+  el.movies.addEventListener("click", () => external(MOVIES));
+  el.browseButton.addEventListener("click", browse);
+  el.browse.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      browse();
+    }
+  });
+  el.currentWatch.addEventListener("click", () => report(openCurrentVideo));
   el.shuffle.addEventListener("click", () => report(async () => {
     state.random = shuffle(await savedEntries()).slice(0, 6);
     await render();

@@ -15,6 +15,10 @@ const youtubePlayer = fs.readFileSync(
   path.join(root, "assets", "youtube-player.html"),
   "utf8"
 );
+const youtubeControls = fs.readFileSync(
+  path.join(root, "assets", "youtube-controls.js"),
+  "utf8"
+);
 const additions = fs.readFileSync(path.join(root, "assets", "builtin-additions.js"), "utf8");
 const webview = fs.readFileSync(
   path.join(root, "src", "vidcore.webview.ixx"),
@@ -45,6 +49,12 @@ for (const id of [
   "youtubeButton",
   "volumeSlider",
   "volumeOutput",
+  "youtubeSeekRow",
+  "youtubeSeekSlider",
+  "youtubeHomeButton",
+  "youtubeMoviesButton",
+  "youtubeBrowseInput",
+  "youtubeBrowseButton",
   "saveTitle",
   "saveNextEnabled",
   "saveNextMode",
@@ -58,6 +68,8 @@ for (const script of [
   "storage.js",
   "metadata.js",
   "scanner.js",
+  "providers.js",
+  "youtube-controls.js",
   "app.js"
 ]) {
   assert.match(html, new RegExp(`<script src="${script}"></script>`));
@@ -170,7 +182,15 @@ new Function(wrapperScriptMatch[1]);
 assert.match(youtube, /youtubeChannels/);
 assert.match(youtube, /playlistItems/);
 assert.match(youtube, /forHandle/);
-assert.doesNotMatch(youtube + youtubePlayer, /SharpGrabber|yt-dlp|youtube-dl|googlevideo.*fetch/i);
+assert.doesNotMatch(youtube + youtubePlayer + youtubeControls, /SharpGrabber|yt-dlp|youtube-dl|googlevideo.*fetch/i);
+assert.match(youtube, /const MOVIES = `\$\{YT\}\/movies`/);
+assert.match(youtube, /search_query/);
+assert.match(youtubePlayer, /VIDCORE_YOUTUBE_STATE/);
+assert.match(youtubePlayer, /VIDCORE_YOUTUBE_ERROR/);
+assert.match(youtubePlayer, /seekFraction/);
+assert.match(youtubePlayer, /\[5, 101, 150, 153\]/);
+assert.match(youtubeControls, /event\.source !== frame\.contentWindow/);
+assert.match(youtubeControls, /player\.vidcore\.test/);
 
 for (const name of [
   "app.js",
@@ -180,7 +200,10 @@ for (const name of [
   "metadata.js",
   "providers.js",
   "storage.js",
-  "styles.css"
+  "styles.css",
+  "youtube-controls.js",
+  "youtube-player.html",
+  "youtube.js"
 ]) {
   assert.equal(
     fs.readFileSync(path.join(root, "assets", name), "utf8"),

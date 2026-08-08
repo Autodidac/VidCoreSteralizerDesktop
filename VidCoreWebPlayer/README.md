@@ -4,6 +4,8 @@ The browser version of the VidCore player. It shares the enhanced metadata, scan
 
 It also includes YouTube URL/ID playback and oEmbed metadata, a dedicated YouTube discovery/list/channel-watchlist tab, restored metadata-scanning Previous/Next controls, separate lower active-list navigation, persistent provider volume, editable display titles, and provider-aware next-in-series metadata. Its built-in library contains the 236-entry, 27-list import.json union with no seeded history. Optional channel update checks use the official YouTube Data API; the locally stored API key is excluded from JSON backups.
 
+The YouTube panel also provides Home, Movies, current-video, URL, video-ID, and search launch controls. Official-player state powers a live seek bar, and embed errors 5, 101, 150, and 153 request the full watch page while preserving a manual fallback when the browser blocks an automatic popup.
+
 ## Run
 
 ```bat

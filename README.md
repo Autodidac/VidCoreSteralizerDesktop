@@ -11,6 +11,7 @@ Two maintained VidCore players live in separate folders:
 - YouTube is a distinct fourth playback mode with URL/ID normalization, oEmbed metadata, and an official-player wrapper served from an identified local HTTPS origin.
 - Previous and Next retain metadata scanning; a separate lower Prev/Next in list pair moves through the selected and filtered Library list with wraparound.
 - A YouTube tab adds saved-video lists, search, random and locally related picks, a live Free with ads storefront link, and a local channel subscription watchlist with optional official Data API update checks.
+- YouTube browser controls open Home, Movies, search/address input, or the current video in the user's normal browser; the official embedded player reports live position for seeking and falls back to the full watch page when YouTube rejects an embed.
 - Edit/Save stores a manual title and an optional provider-aware next-in-series link.
 - A persistent volume slider requests provider-supported playback volume; native Windows audio-session control is disabled in the security rollback.
 - Native WebView2 extension loading is disabled after the v0.2.16 Defender detection; the browser build can still use extensions installed normally in the user's browser.
